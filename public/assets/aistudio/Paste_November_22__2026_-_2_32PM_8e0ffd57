@@ -1,0 +1,1123 @@
+# Project: Android Companion – Cellular to iPhone Call Bridge
+
+## Role
+
+Act as a Senior Android Systems Engineer and Software Architect specializing in:
+
+- Android Telephony Framework
+- Bluetooth Low Energy (BLE) GATT Peripheral
+- Android Background Execution
+- Android Telecom APIs
+- AudioRecord / AudioTrack
+- Real-time Audio Streaming
+- Android API Compatibility (API 21–34)
+- Kotlin, Coroutines and Native Android Architecture
+
+Your task is to design and implement the Android Companion application for a cross-device cellular call bridge system.
+
+Do not build the iOS application yet. Only build the Android application and prepare a stable communication protocol for a future native iOS application.
+
+---
+
+# 1. Project Overview
+
+The objective is to create an Android application that acts as a communication bridge between an Android smartphone and an iPhone.
+
+The Android smartphone contains the physical SIM card and handles the actual cellular calls.
+
+The iPhone acts as a remote companion device.
+
+The Android application must:
+
+1. Detect incoming cellular calls.
+2. Detect outgoing cellular calls.
+3. Detect call status changes.
+4. Send call notifications and metadata to the paired iPhone.
+5. Receive commands from the iPhone.
+6. Answer or reject incoming calls when Android Telecom permissions and roles allow it.
+7. Terminate ongoing calls when supported.
+8. Initiate cellular calls using a phone number received from the iPhone.
+9. Maintain a BLE connection with the iPhone.
+10. Establish a local network connection for future bidirectional audio streaming.
+11. Run its connection and signaling components through an appropriately configured Foreground Service.
+
+The long-term objective is to make the iPhone behave like a remote companion interface for the Android phone.
+
+Important architectural separation:
+
+- BLE is responsible for device discovery, pairing, signaling and call commands.
+- Wi-Fi / Local Network is responsible for high-bandwidth communication and future audio streaming.
+- Android Telephony is responsible for the actual cellular call.
+- The iOS application will later use CoreBluetooth and CallKit.
+
+Never assume that Bluetooth signaling automatically provides access to cellular call audio.
+
+---
+
+# 2. Critical Technical Feasibility Requirements
+
+Before writing implementation code, produce a feasibility matrix.
+
+Classify every requested feature as:
+
+- SUPPORTED
+- CONDITIONALLY SUPPORTED
+- EXPERIMENTAL
+- NOT AVAILABLE TO NORMAL THIRD-PARTY APPS
+
+Do not invent Android APIs or claim that privileged capabilities are available to normal applications.
+
+## 2.1 Cellular call audio restrictions
+
+This is a critical requirement.
+
+Android restricts direct cellular call audio capture.
+
+The following audio sources must not be assumed to work in a normal third-party application:
+
+- MediaRecorder.AudioSource.VOICE_CALL
+- MediaRecorder.AudioSource.VOICE_UPLINK
+- MediaRecorder.AudioSource.VOICE_DOWNLINK
+
+They require CAPTURE_AUDIO_OUTPUT, which is a privileged/system permission.
+
+Similarly, playing PCM through AudioTrack does not inject the PCM data directly into the cellular call uplink.
+
+AudioManager.MODE_IN_COMMUNICATION does not remove these restrictions.
+
+Therefore:
+
+1. Implement a generic audio transport architecture.
+2. Implement microphone-based audio testing separately from cellular call audio.
+3. Clearly detect and display whether direct cellular audio capture is available.
+4. Never report a successful cellular audio bridge if only microphone audio is being transmitted.
+5. Use an explicit capability state such as:
+
+   CELLULAR_AUDIO_UNAVAILABLE
+   MICROPHONE_TEST_AVAILABLE
+   CELLULAR_AUDIO_EXPERIMENTAL
+   CELLULAR_AUDIO_SUPPORTED
+
+6. Provide a documented extension point for a future privileged implementation, OEM integration, rooted-device implementation or external hardware bridge.
+
+The application must still be useful even when direct cellular audio access is unavailable.
+
+The first milestone is reliable call signaling and call control, not pretending that unrestricted cellular audio capture is possible.
+
+---
+
+# 3. Compatibility and Development Constraints
+
+## Android Configuration
+
+- minSdk: 21
+- targetSdk: 34
+- compileSdk: Use a stable installed SDK compatible with targetSdk 34.
+- Language: Kotlin
+- UI: Native Android XML Views
+- ViewBinding: Enabled
+- Architecture: Modular and maintainable
+- Asynchronous operations: Kotlin Coroutines
+- State management: StateFlow and SharedFlow
+- Build system: Gradle Kotlin DSL
+
+Do not use Jetpack Compose.
+
+The application must remain lightweight and support older Android devices with limited memory and processing power.
+
+## API-Level Compatibility
+
+Implement proper API-level branching using Build.VERSION.SDK_INT.
+
+### Bluetooth permissions
+
+Android 5 through Android 11:
+
+- BLUETOOTH
+- BLUETOOTH_ADMIN
+- Apply maxSdkVersion=30 where appropriate.
+
+Android 12 and newer:
+
+- BLUETOOTH_ADVERTISE
+- BLUETOOTH_CONNECT
+- BLUETOOTH_SCAN only if scanning is actually implemented.
+
+Do not request unnecessary location permissions for a peripheral-only implementation.
+
+If legacy Bluetooth scanning is implemented, handle the required location permissions separately.
+
+### Notifications
+
+- Android 13+: Request POST_NOTIFICATIONS at runtime.
+- Android 8+: Create notification channels.
+- Provide a fallback for older Android versions.
+
+### Call state detection
+
+- API 21–30: PhoneStateListener.
+- API 31+: TelephonyCallback.CallStateListener.
+
+Remember that TelephonyCallback.CallStateListener provides call state but does not provide the caller number.
+
+Caller-number availability must be treated as best-effort and must not be assumed.
+
+For richer call information, use InCallService when the application has the required default dialer role.
+
+### Call answering and termination
+
+Use supported Android Telecom APIs.
+
+Prefer:
+
+- InCallService
+- android.telecom.Call.answer()
+- android.telecom.Call.reject()
+- android.telecom.Call.disconnect()
+
+InCallService was introduced in API 23.
+
+For devices running Android 10 and newer, request the ROLE_DIALER role through RoleManager when the application implements the necessary default dialer functionality.
+
+For older versions, use the supported default dialer selection flow where available.
+
+For Android 5 / API 21–22, implement call-state monitoring and clearly expose the lack of equivalent public InCallService call control.
+
+Do not use Accessibility Services, undocumented reflection, hidden APIs or privileged permissions as fake fallbacks for call answering or termination.
+
+The application must explain which call-control capabilities are available on the current device.
+
+---
+
+# 4. Application Architecture
+
+Use a clean modular package structure.
+
+Suggested structure:
+
+com.example.callbridge/
+
+├── core/
+│   ├── App.kt
+│   ├── AppConfig.kt
+│   └── Logger.kt
+│
+├── permissions/
+│   ├── PermissionManager.kt
+│   └── PermissionStatus.kt
+│
+├── service/
+│   ├── BridgeForegroundService.kt
+│   ├── BridgeNotificationManager.kt
+│   └── WakeLockManager.kt
+│
+├── telephony/
+│   ├── CallManager.kt
+│   ├── CallStateListener.kt
+│   ├── BridgeInCallService.kt
+│   ├── DefaultDialerManager.kt
+│   └── CallModels.kt
+│
+├── bluetooth/
+│   ├── BleSignalingServer.kt
+│   ├── BleGattCallbacks.kt
+│   ├── BleAdvertisingManager.kt
+│   ├── BlePermissions.kt
+│   └── BleConstants.kt
+│
+├── network/
+│   ├── LocalNetworkManager.kt
+│   ├── LocalIpResolver.kt
+│   ├── LocalControlServer.kt
+│   └── NetworkModels.kt
+│
+├── audio/
+│   ├── LocalAudioBridge.kt
+│   ├── AudioCaptureSource.kt
+│   ├── AudioPlaybackSink.kt
+│   ├── AudioEffectsManager.kt
+│   ├── AudioCapabilityChecker.kt
+│   └── AudioModels.kt
+│
+├── protocol/
+│   ├── BridgeMessage.kt
+│   ├── CommandMessage.kt
+│   ├── CallStateMessage.kt
+│   ├── MessageSerializer.kt
+│   └── ProtocolConstants.kt
+│
+├── security/
+│   ├── PairingManager.kt
+│   └── SessionAuthenticator.kt
+│
+├── ui/
+│   ├── MainActivity.kt
+│   ├── DashboardViewModel.kt
+│   ├── EventLogAdapter.kt
+│   └── dialogs/
+│
+└── utils/
+    ├── DeviceCapabilities.kt
+    ├── NetworkUtils.kt
+    └── VersionUtils.kt
+
+You may improve this structure if there is a clear architectural reason.
+
+Avoid unnecessary abstraction and excessive dependencies.
+
+---
+
+# 5. Persistent Foreground Service
+
+Implement:
+
+BridgeForegroundService.kt
+
+Responsibilities:
+
+- Manage BLE GATT Server lifecycle.
+- Manage BLE advertising.
+- Monitor cellular call status through CallManager.
+- Manage local network communication.
+- Maintain the paired device connection state.
+- Update persistent notification content.
+- Publish application-wide state updates.
+- Handle service shutdown and cleanup correctly.
+
+Notification examples:
+
+Connected:
+"iPhone Connected – Bridge Active"
+
+Disconnected:
+"Waiting for iPhone Connection"
+
+Incoming call:
+"Incoming call: +98XXXXXXXXXX"
+
+Active call:
+"Call in progress"
+
+Audio limitation:
+"Cellular audio bridge unavailable on this device"
+
+## Foreground Service Requirements
+
+Use AndroidX ServiceCompat where appropriate.
+
+Support Android 14 foreground-service type requirements.
+
+Declare the required permissions for the service types actually used:
+
+- FOREGROUND_SERVICE
+- FOREGROUND_SERVICE_CONNECTED_DEVICE
+- FOREGROUND_SERVICE_MICROPHONE
+- FOREGROUND_SERVICE_PHONE_CALL
+
+Do not activate every service type unconditionally.
+
+Important:
+
+- connectedDevice is used for the Bluetooth companion connection.
+- microphone is used only when RECORD_AUDIO is granted and the application is allowed to use the microphone.
+- phoneCall must only be used when the application meets Android's eligibility requirements, such as holding ROLE_DIALER or MANAGE_OWN_CALLS.
+
+Handle Android 12+ restrictions on starting foreground services from the background.
+
+For microphone operations on Android 14+, start the microphone foreground service through an eligible user-visible flow.
+
+Use a persistent notification with a notification channel.
+
+## WakeLock
+
+Implement a Partial WakeLock manager.
+
+Acquire the WakeLock only when necessary:
+
+- Active call session.
+- Active communication session.
+- Critical temporary BLE/network operation.
+
+Release it immediately when no longer needed.
+
+Use a timeout as a safety mechanism.
+
+Never hold a WakeLock indefinitely.
+
+## Battery Optimization
+
+Provide an optional user-controlled action to open:
+
+Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+
+Explain why this permission may improve reliability.
+
+Do not automatically request battery optimization exemption during installation.
+
+Do not promise that ignoring battery optimizations guarantees unlimited background execution.
+
+---
+
+# 6. CallManager
+
+Implement:
+
+CallManager.kt
+
+Responsibilities:
+
+- Detect cellular call state.
+- Expose the current call state through StateFlow.
+- Detect incoming calls.
+- Detect outgoing calls.
+- Detect active calls.
+- Detect disconnected calls.
+- Provide supported call-control operations.
+
+Call states:
+
+enum class CallState {
+    IDLE,
+    RINGING,
+    OFFHOOK,
+    DISCONNECTED,
+    UNKNOWN
+}
+
+Call metadata:
+
+data class CallInfo(
+    val callId: String?,
+    val phoneNumber: String?,
+    val displayName: String?,
+    val state: CallState,
+    val direction: CallDirection?,
+    val timestamp: Long
+)
+
+CallDirection:
+
+- INCOMING
+- OUTGOING
+- UNKNOWN
+
+## Required Operations
+
+suspend fun answerCall(): CallOperationResult
+
+suspend fun rejectCall(): CallOperationResult
+
+suspend fun endCall(): CallOperationResult
+
+suspend fun dialNumber(number: String): CallOperationResult
+
+Do not return success unless the underlying Android operation actually succeeded.
+
+Every result should contain:
+
+- success
+- errorCode
+- errorMessage
+- capabilityStatus
+
+## InCallService
+
+Implement BridgeInCallService.kt for devices where the application is the default dialer.
+
+Maintain references to active Call objects safely.
+
+Handle:
+
+- onCallAdded
+- onCallRemoved
+- Call state changes
+- Incoming call details
+- Answer action
+- Reject action
+- Disconnect action
+
+Do not retain stale Call references.
+
+If the application is not the default dialer, expose the reduced feature set instead of pretending call control is available.
+
+## Outgoing calls
+
+Support an outgoing call command received from the iPhone.
+
+Validate the phone number.
+
+Use the appropriate Telecom APIs and permissions.
+
+If Android requires user interaction or confirmation, use an appropriate system-approved user flow.
+
+Never attempt to bypass Android's background activity launch restrictions.
+
+---
+
+# 7. BLE Signaling Server
+
+Implement:
+
+BleSignalingServer.kt
+
+The Android device acts as a BLE Peripheral / GATT Server.
+
+The iPhone will later act as the BLE Central using CoreBluetooth.
+
+Use a stable custom service UUID.
+
+Create two characteristics.
+
+## Characteristic 1: CALL_STATE_CHAR
+
+Properties:
+
+- READ
+- NOTIFY
+
+Purpose:
+
+Send cellular call information and device status to the iPhone.
+
+Example JSON:
+
+{
+  "version": 1,
+  "type": "CALL_STATE",
+  "state": "RINGING",
+  "callId": "call_123",
+  "number": "+98912XXXXXXXX",
+  "displayName": null,
+  "endpoint": {
+    "host": "192.168.43.1",
+    "port": 8080
+  },
+  "audioCapability": "CELLULAR_AUDIO_UNAVAILABLE",
+  "timestamp": 1790000000
+}
+
+Do not hardcode the example IP address.
+
+Resolve the actual active network address dynamically.
+
+## Characteristic 2: COMMAND_CHAR
+
+Properties:
+
+- WRITE
+- WRITE_WITHOUT_RESPONSE where appropriate
+
+Accept commands from the iPhone.
+
+Example commands:
+
+Answer incoming call:
+
+{
+  "version": 1,
+  "id": "cmd_001",
+  "cmd": "ACCEPT"
+}
+
+Reject incoming call:
+
+{
+  "version": 1,
+  "id": "cmd_002",
+  "cmd": "REJECT"
+}
+
+End active call:
+
+{
+  "version": 1,
+  "id": "cmd_003",
+  "cmd": "HANGUP"
+}
+
+Initiate outgoing call:
+
+{
+  "version": 1,
+  "id": "cmd_004",
+  "cmd": "DIAL",
+  "number": "+98912XXXXXXXX"
+}
+
+The server must validate every incoming command.
+
+Use a response protocol with matching command IDs.
+
+Example:
+
+{
+  "version": 1,
+  "type": "COMMAND_RESULT",
+  "id": "cmd_001",
+  "success": true,
+  "message": "Call answered"
+}
+
+## BLE Requirements
+
+Implement:
+
+- Bluetooth adapter availability checks.
+- BLE Peripheral support detection.
+- GATT Server initialization.
+- Custom service registration.
+- Characteristic registration.
+- Advertising start and stop.
+- Client connection callbacks.
+- Client disconnection callbacks.
+- MTU negotiation.
+- Notification updates.
+- Characteristic read handling.
+- Characteristic write handling.
+- Connection cleanup.
+
+Check:
+
+BluetoothAdapter.isMultipleAdvertisementSupported()
+
+If BLE advertising is unavailable, show an explicit unsupported status.
+
+Handle Bluetooth disabled, missing hardware, permission denial, connection failures and GATT errors.
+
+Implement notification framing or message fragmentation where required.
+
+Do not assume an arbitrary JSON message always fits into a single BLE notification.
+
+Keep UUIDs stable across application releases.
+
+## Security
+
+Implement an application-level pairing handshake.
+
+Only allow sensitive commands after successful pairing and authentication.
+
+Do not allow arbitrary nearby BLE devices to answer, reject or initiate calls.
+
+Require explicit user approval when pairing a new iPhone.
+
+Do not expose phone numbers in debug logs unnecessarily.
+
+---
+
+# 8. Local Network Communication
+
+Implement:
+
+LocalNetworkManager.kt
+
+LocalAudioBridge.kt
+
+The Android device must expose a local communication endpoint that the iPhone can connect to.
+
+Possible network scenarios:
+
+1. Both devices are connected to the same Wi-Fi network.
+2. The Android device enables its Wi-Fi hotspot.
+3. The iPhone connects to the Android hotspot.
+
+Do not assume that hotspot IP addresses are always identical across devices.
+
+Use Android network APIs to identify the active local IP address.
+
+The server must bind to the appropriate local interface and expose its current address through the BLE signaling protocol.
+
+Implement connection status reporting.
+
+The network component must cleanly handle:
+
+- Network changes.
+- Wi-Fi disconnection.
+- Hotspot shutdown.
+- IP address changes.
+- Reconnection.
+- Socket failure.
+- Client disconnection.
+
+Separate control communication from media transport.
+
+---
+
+# 9. Audio Bridge Architecture
+
+Implement a modular audio architecture, but respect Android cellular-call restrictions.
+
+The goal is to prepare a bidirectional low-latency audio transport for a future compatible audio source.
+
+Target PCM test format:
+
+- Sample rate: 16000 Hz
+- Encoding: PCM 16-bit
+- Channels: Mono
+
+Implement the following abstractions:
+
+AudioCaptureSource
+
+AudioPlaybackSink
+
+AudioTransport
+
+LocalAudioBridge
+
+## Microphone Test Mode
+
+Use AudioRecord with:
+
+- MediaRecorder.AudioSource.VOICE_COMMUNICATION
+- Fallback to MediaRecorder.AudioSource.MIC
+
+Use AudioTrack for playback testing.
+
+Configure audio effects when available:
+
+- AcousticEchoCanceler
+- NoiseSuppressor
+- AutomaticGainControl, where supported
+
+Correctly release all audio resources.
+
+Do not create an AudioRecord instance when microphone permission is missing.
+
+## Cellular Audio Mode
+
+Never assume that VOICE_COMMUNICATION or MIC provides direct access to both sides of a cellular call.
+
+Never claim that AudioTrack automatically injects audio into an active cellular call.
+
+If direct cellular audio access is unavailable, return:
+
+CELLULAR_AUDIO_UNAVAILABLE
+
+The dashboard must clearly distinguish:
+
+- Microphone test streaming.
+- Normal speaker playback.
+- Actual cellular call audio bridging.
+
+These are separate capabilities.
+
+## Transport
+
+Design the transport so that it can later support:
+
+- WebRTC
+- DTLS-SRTP
+- Secure real-time audio streaming
+
+For an initial PCM UDP implementation:
+
+- Treat it as development/test mode only.
+- Include packet sequence numbers.
+- Include timestamps.
+- Handle packet loss.
+- Handle audio buffer underflow.
+- Avoid unencrypted production phone-call audio.
+- Never invent a custom cryptographic protocol.
+
+The audio module must remain independent of CallManager and BleSignalingServer.
+
+---
+
+# 10. Main Dashboard UI
+
+Implement MainActivity.kt and XML layouts.
+
+Use ViewBinding.
+
+The application UI should be lightweight, clean and RTL-ready.
+
+Prefer Persian UI text by default, with localization support.
+
+## Dashboard sections
+
+### A. Application Status
+
+Display:
+
+- Bridge Service status.
+- BLE status.
+- iPhone connection status.
+- Cellular call state.
+- Local network status.
+- Audio capability status.
+
+### B. Permission Checklist
+
+Display each permission with a status indicator.
+
+Examples:
+
+- Bluetooth permissions.
+- Phone state permission.
+- Notification permission.
+- Microphone permission.
+- Call permission.
+- Default dialer role status.
+
+Each permission should have a relevant action button.
+
+Do not request every permission immediately at installation.
+
+Request permissions only when the user activates the feature that needs them.
+
+### C. BLE Status
+
+Display:
+
+- Bluetooth enabled/disabled.
+- BLE Peripheral supported/not supported.
+- Advertising active/inactive.
+- GATT Server initialized/not initialized.
+- iPhone connected/disconnected.
+
+### D. Network Status
+
+Display:
+
+- Active network.
+- Local IP address.
+- Server port.
+- Server status.
+- Connected client.
+
+### E. Call Status
+
+Display:
+
+- Incoming call.
+- Outgoing call.
+- Active call.
+- Caller number when available.
+- Available call-control operations.
+
+### F. Audio Status
+
+Display:
+
+- Microphone permission.
+- AudioRecord availability.
+- AudioTrack availability.
+- Audio effects availability.
+- Cellular audio capture capability.
+
+Clearly display the difference between microphone testing and cellular audio bridging.
+
+### G. Live Event Log
+
+Use RecyclerView.
+
+Show events such as:
+
+- Service started.
+- BLE advertising started.
+- GATT client connected.
+- iPhone authenticated.
+- Incoming call detected.
+- Command received.
+- Call answered.
+- Call rejected.
+- Network server started.
+- Audio capability unavailable.
+
+Do not log full phone numbers or audio contents.
+
+### H. Service Controls
+
+Provide:
+
+- Start Bridge
+- Stop Bridge
+- Pair iPhone
+- Test BLE
+- Test Network
+- Test Microphone
+
+Every button must execute a real operation.
+
+---
+
+# 11. AndroidManifest.xml
+
+Generate a complete and correctly scoped AndroidManifest.xml.
+
+Review every permission and declare maxSdkVersion when appropriate.
+
+Potential permissions include:
+
+INTERNET
+
+ACCESS_NETWORK_STATE
+
+ACCESS_WIFI_STATE
+
+WAKE_LOCK
+
+READ_PHONE_STATE
+
+CALL_PHONE
+
+RECORD_AUDIO
+
+BLUETOOTH
+
+BLUETOOTH_ADMIN
+
+BLUETOOTH_ADVERTISE
+
+BLUETOOTH_CONNECT
+
+BLUETOOTH_SCAN, only if scanning is implemented
+
+POST_NOTIFICATIONS
+
+FOREGROUND_SERVICE
+
+FOREGROUND_SERVICE_CONNECTED_DEVICE
+
+FOREGROUND_SERVICE_MICROPHONE
+
+FOREGROUND_SERVICE_PHONE_CALL, only when the implementation qualifies and uses this type
+
+Optional permissions such as READ_CONTACTS or READ_CALL_LOG must only be included when a specific implemented feature genuinely needs them.
+
+Do not request CAPTURE_AUDIO_OUTPUT as though it were obtainable by an ordinary application.
+
+Add uses-feature declarations for Bluetooth LE, without unnecessarily preventing installation on devices where the feature is unavailable.
+
+Include:
+
+- MainActivity
+- BridgeForegroundService
+- BridgeInCallService
+- Necessary intent filters
+- Correct exported values
+- Required InCallService metadata
+- Notification configuration
+
+Ensure the manifest passes Android 14 service-type validation.
+
+---
+
+# 12. Gradle and Dependencies
+
+Generate a clean app-level build.gradle.kts.
+
+Enable:
+
+buildFeatures {
+    viewBinding = true
+}
+
+Keep dependencies minimal.
+
+Use appropriate stable versions of:
+
+- Kotlin
+- Kotlin Coroutines
+- AndroidX Core KTX
+- AndroidX AppCompat
+- AndroidX Lifecycle Runtime KTX
+- AndroidX Activity KTX
+- RecyclerView
+
+Avoid Jetpack Compose.
+
+Avoid unnecessary networking, database and dependency-injection libraries.
+
+Do not add Room or a database unless a genuine persistence requirement exists.
+
+Provide a complete Gradle configuration compatible with the requested minimum and target SDK.
+
+---
+
+# 13. Error Handling and Reliability
+
+All system operations must be safe against:
+
+- SecurityException
+- BluetoothGatt failures
+- Bluetooth adapter unavailable
+- Unsupported BLE advertising
+- Missing runtime permissions
+- ForegroundServiceStartNotAllowedException
+- AudioRecord initialization errors
+- AudioTrack initialization errors
+- Network disconnection
+- Invalid BLE messages
+- Failed call-control operations
+- Process shutdown
+
+Use structured concurrency.
+
+Use lifecycle-aware state collection.
+
+Cancel scopes and release resources correctly.
+
+Use exponential backoff for reconnect operations.
+
+Prevent duplicate GATT servers and foreground services.
+
+Do not use global unmanaged coroutine scopes.
+
+Do not promise guaranteed background execution on all Android manufacturers.
+
+---
+
+# 14. Testing Requirements
+
+Create a practical test plan.
+
+Test on:
+
+- Android 5.0 / API 21
+- Android 6.0 / API 23
+- Android 8.0 / API 26
+- Android 10 / API 29
+- Android 12 / API 31
+- Android 13 / API 33
+- Android 14 / API 34
+
+Prioritize real physical Android phones for:
+
+- BLE peripheral support.
+- Advertising reliability.
+- GATT connections.
+- Screen-off behavior.
+- Background execution.
+- Incoming call detection.
+- Default dialer integration.
+- Audio limitations.
+
+Emulators are not sufficient for validating every telephony and Bluetooth feature.
+
+Create unit tests for:
+
+- Protocol serialization.
+- Incoming command validation.
+- Call state transitions.
+- Capability detection.
+- Network address resolution.
+- Error handling.
+
+---
+
+# 15. Required Deliverables
+
+Generate a complete Android Studio project.
+
+Do not provide only pseudocode or isolated snippets.
+
+Deliver:
+
+1. Architecture overview.
+2. Feature feasibility matrix.
+3. Complete project folder structure.
+4. Root Gradle configuration.
+5. App-level build.gradle.kts.
+6. AndroidManifest.xml.
+7. Complete Kotlin implementation.
+8. XML layouts.
+9. ViewBinding integration.
+10. Resource files and strings.
+11. Permission management.
+12. Foreground Service.
+13. CallManager.
+14. InCallService.
+15. BLE GATT Server.
+16. BLE communication protocol.
+17. Local network server.
+18. Audio transport abstractions.
+19. Microphone testing implementation.
+20. Security and pairing implementation.
+21. Unit tests.
+22. README containing installation and setup instructions.
+23. Build and troubleshooting instructions.
+
+For every file, provide its complete path and complete source code.
+
+Do not omit supporting classes required for compilation.
+
+Do not leave unfinished TODOs while claiming the project is production-ready.
+
+If a capability cannot be implemented through public Android APIs, explicitly identify it as unsupported and provide the appropriate architectural extension point.
+
+---
+
+# 16. Development Strategy
+
+Implement this project in the following phases.
+
+## Phase 1 – Android Foundation
+
+- Project setup.
+- XML dashboard.
+- Permission management.
+- Capability detection.
+- Foreground Service.
+- Notification.
+- Event logging.
+
+## Phase 2 – BLE Communication
+
+- GATT Server.
+- Advertising.
+- Pairing.
+- Connection management.
+- Call-state notifications.
+- Incoming command processing.
+
+## Phase 3 – Telephony Integration
+
+- PhoneStateListener.
+- TelephonyCallback.
+- InCallService.
+- Default dialer integration.
+- Incoming call handling.
+- Outgoing call handling.
+- Call command responses.
+
+## Phase 4 – Local Network
+
+- Local IP resolution.
+- Local network server.
+- iPhone connection protocol.
+- Reconnection management.
+- Secure session establishment.
+
+## Phase 5 – Audio Prototype
+
+- Audio capability detection.
+- Microphone test.
+- AudioRecord / AudioTrack.
+- Audio transport abstraction.
+- Latency measurement.
+- Cellular audio feasibility reporting.
+
+Do not mark Phase 5 as a successful cellular call bridge unless actual cellular uplink and downlink audio have been verified on the target device.
+
+---
+
+# 17. Final Engineering Principles
+
+The application must be:
+
+- Modular.
+- Lightweight.
+- Stable on legacy Android versions.
+- Compatible with native Android APIs.
+- Designed for a future iOS companion.
+- Easy to debug.
+- Secure by default.
+- Explicit about Android permission limitations.
+- Honest about audio capabilities.
+
+Do not sacrifice technical correctness to make the feature list appear complete.
+
+Prioritize a reliable BLE signaling and telephony-control foundation.
+
+The final result must be a buildable Android application, not merely an architecture proposal.

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CallBridge</string>
+    <string name="dashboard_title">پل تماس اندروید به آیفون</string>
+    <string name="dashboard_subtitle">همراه مخابراتی BLE و شبکه محلی</string>
+    <string name="btn_switch_language">EN</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_name">سرویس پل تماس</string>
+    <string name="notif_channel_description">اعلان دائمی برای اتصال BLE، پایش تماس سیم‌کارت و سرور شبکه محلی</string>
+    <string name="notif_connected">آیفون متصل است – پل تماس فعال</string>
+    <string name="notif_waiting">در انتظار اتصال آیفون</string>
+    <string name="notif_incoming_call">تماس ورودی: %1$s</string>
+    <string name="notif_active_call">تماس در حال برقراری</string>
+    <string name="notif_audio_unavailable">انتقال مستقیم صدای تماس سیم‌کارت در این دستگاه در دسترس نیست</string>
+    <string name="notif_bridge_running_subtext">سرویس پل تماس در حال اجراست</string>
+
+    <!-- Section Titles -->
+    <string name="section_app_status">الف. وضعیت کلی سامانه</string>
+    <string name="section_controls">کنترل سرویس و تست‌های واقعی</string>
+    <string name="section_permissions">ب. چک‌لیست مجوزها و نقش‌های سیستم</string>
+    <string name="section_ble">پ. وضعیت بلوتوث کم‌مصرف (BLE GATT)</string>
+    <string name="section_network">ت. وضعیت شبکه محلی (Wi-Fi / Hotspot)</string>
+    <string name="section_call">ث. وضعیت تماس سیم‌کارت و Telecom</string>
+    <string name="section_audio">ج. وضعیت صدا (تست میکروفون در برابر صدای تماس)</string>
+    <string name="section_logs">چ. گزارش زنده رویدادها</string>
+
+    <!-- Labels: App Status -->
+    <string name="label_service_status">سرویس پیش‌زمینه</string>
+    <string name="label_ble_status">وضعیت BLE</string>
+    <string name="label_iphone_connection">اتصال آیفون</string>
+    <string name="label_call_state">وضعیت تماس سیم‌کارت</string>
+    <string name="label_network_status">شبکه محلی</string>
+    <string name="label_audio_capability">قابلیت صدای تماس</string>
+
+    <!-- Controls -->
+    <string name="action_start_bridge">شروع پل تماس</string>
+    <string name="action_stop_bridge">توقف پل تماس</string>
+    <string name="action_pair_iphone">جفت‌سازی آیفون</string>
+    <string name="action_test_ble">تست BLE</string>
+    <string name="action_test_network">تست شبکه</string>
+    <string name="action_test_mic">تست میکروفون</string>
+    <string name="action_stop_mic_test">توقف تست میکروفون</string>
+    <string name="action_test_dial">تماس خروجی آزمایشی</string>
+    <string name="action_clear_logs">پاک‌سازی لاگ</string>
+
+    <!-- Permissions -->
+    <string name="perm_bluetooth">مجوزهای بلوتوث (BLE Peripheral)</string>
+    <string name="perm_phone_state">مجوز وضعیت تماس (READ_PHONE_STATE)</string>
+    <string name="perm_notifications">مجوز اعلان‌ها (Android 13+)</string>
+    <string name="perm_microphone">مجوز میکروفون (فقط تست میکروفون)</string>
+    <string name="perm_call_phone">مجوز برقراری تماس خروجی (CALL_PHONE)</string>
+    <string name="perm_default_dialer">نقش شماره‌گیر پیش‌فرض (ROLE_DIALER / InCallService)</string>
+    <string name="perm_battery_opt">بهینه‌سازی باتری (اختیاری)</string>
+    <string name="btn_grant">درخواست</string>
+    <string name="btn_configure">تنظیم</string>
+    <string name="btn_granted">تأیید شده</string>
+    <string name="btn_not_needed">غیرلازم</string>
+    <string name="btn_unsupported">پشتیبانی‌نشده</string>
+
+    <!-- BLE Fields -->
+    <string name="label_bt_enabled">بلوتوث دستگاه</string>
+    <string name="label_ble_peripheral">پشتیبانی BLE Peripheral</string>
+    <string name="label_ble_advertising">تبلیغ سیگنال (Advertising)</string>
+    <string name="label_gatt_server">سرور GATT</string>
+    <string name="label_ble_client">وضعیت کلاینت آیفون</string>
+    <string name="label_ble_mtu">اندازه MTU / احراز هویت</string>
+
+    <!-- Network Fields -->
+    <string name="label_active_network">شبکه فعال</string>
+    <string name="label_local_ip">نشانی IP محلی</string>
+    <string name="label_server_port">پورت کنترل / UDP تست</string>
+    <string name="label_server_status">وضعیت سرور محلی</string>
+    <string name="label_connected_client">کلاینت متصل</string>
+
+    <!-- Call Fields -->
+    <string name="label_call_direction">جهت تماس</string>
+    <string name="label_caller_number">شماره تماس‌گیرنده</string>
+    <string name="label_call_controls_available">قابلیت کنترل تماس</string>
+    <string name="btn_answer_call">پاسخ</string>
+    <string name="btn_reject_call">رد</string>
+    <string name="btn_end_call">قطع</string>
+
+    <!-- Audio Fields -->
+    <string name="label_audio_mic_perm">مجوز میکروفون</string>
+    <string name="label_audio_record">دسترس‌پذیری AudioRecord</string>
+    <string name="label_audio_track">دسترس‌پذیری AudioTrack</string>
+    <string name="label_audio_effects">افکت‌ها (AEC / NS / AGC)</string>
+    <string name="label_cellular_audio_cap">ضبط مستقیم صدای تماس سیم‌کارت</string>
+    <string name="label_audio_metrics">آمار تست میکروفون (فریم / تأخیر)</string>
+    <string name="audio_honesty_notice">توجه فنی: در اندروید معمولی دسترسی به VOICE_CALL/UPLINK/DOWNLINK و تزریق صدا به تماس سیم‌کارت محدود به برنامه‌های سیستمی است. تست میکروفون فقط مسیر محلی میکروفون به اسپیکر (PCM 16kHz Mono) را بررسی می‌کند و جایگزین پل صدای تماس سیم‌کارت نیست.</string>
+
+    <!-- Status values -->
+    <string name="status_running">فعال</string>
+    <string name="status_starting">در حال راه‌اندازی</string>
+    <string name="status_stopped">متوقف</string>
+    <string name="status_error">خطا</string>
+    <string name="status_enabled">روشن</string>
+    <string name="status_disabled">خاموش</string>
+    <string name="status_supported">پشتیبانی می‌شود</string>
+    <string name="status_not_supported">پشتیبانی نمی‌شود</string>
+    <string name="status_active">فعال</string>
+    <string name="status_inactive">غیرفعال</string>
+    <string name="status_initialized">آماده</string>
+    <string name="status_not_initialized">راه‌اندازی نشده</string>
+    <string name="status_connected">متصل</string>
+    <string name="status_disconnected">قطع</string>
+    <string name="status_listening">در حال شنود</string>
+    <string name="status_available">موجود</string>
+    <string name="status_unavailable">ناموجود</string>
+    <string name="status_authenticated">احراز هویت شده</string>
+    <string name="status_unauthenticated">بدون احراز هویت</string>
+    <string name="status_none">هیچ‌کدام</string>
+
+    <!-- Call states -->
+    <string name="call_state_idle">آماده‌باش (بدون تماس)</string>
+    <string name="call_state_ringing">زنگ تماس ورودی</string>
+    <string name="call_state_offhook">تماس فعال</string>
+    <string name="call_state_disconnected">تماس پایان یافت</string>
+    <string name="call_state_unknown">نامشخص</string>
+
+    <string name="call_dir_incoming">ورودی</string>
+    <string name="call_dir_outgoing">خروجی</string>
+    <string name="call_dir_unknown">نامشخص</string>
+
+    <string name="call_cap_full">کامل (پاسخ، رد و قطع از طریق InCallService)</string>
+    <string name="call_cap_not_dialer">فقط پایش وضعیت — برای پاسخ/رد، نقش شماره‌گیر پیش‌فرض لازم است</string>
+    <string name="call_cap_legacy">فقط پایش وضعیت — API 21/22 فاقد InCallService عمومی است</string>
+    <string name="call_cap_no_perm">مجوز READ_PHONE_STATE صادر نشده است</string>
+
+    <!-- Dialogs & Messages -->
+    <string name="dialog_pairing_window_title">پنجره جفت‌سازی آیفون فعال شد</string>
+    <string name="dialog_pairing_window_body">کد ۶ رقمی زیر را در کلاینت آیفون وارد کنید. پس از دریافت درخواست، تأیید نهایی روی این دستگاه نمایش داده می‌شود.\n\nکد جفت‌سازی: %1$s\n\nدستگاه جفت‌شده فعلی: %2$s</string>
+    <string name="dialog_pairing_approval_title">تأیید جفت‌سازی آیفون جدید</string>
+    <string name="dialog_pairing_approval_body">دستگاه «%1$s» درخواست جفت‌سازی برای کنترل تماس ارسال کرده است.\nکد تطبیق: %2$s\n\nآیا اجازه کنترل تماس را می‌دهید؟</string>
+    <string name="dialog_approve">تأیید و جفت‌سازی</string>
+    <string name="dialog_reject">رد درخواست</string>
+    <string name="dialog_unpair">حذف دستگاه جفت‌شده</string>
+    <string name="dialog_close">بستن</string>
+
+    <string name="dialog_battery_title">استثنای بهینه‌سازی باتری</string>
+    <string name="dialog_battery_body">خارج کردن برنامه از بهینه‌سازی باتری می‌تواند پایداری سرویس پیش‌زمینه و اتصال BLE را در حالت خاموش بودن صفحه بهبود دهد؛ اما به‌دلیل محدودیت‌های سازندگان مختلف اندروید، اجرای نامحدود پس‌زمینه تضمین نمی‌شود.</string>
+    <string name="dialog_open_settings">باز کردن تنظیمات سیستم</string>
+
+    <string name="dialog_dial_title">آزمایش تماس خروجی (Telecom API)</string>
+    <string name="dialog_dial_hint">شماره تلفن (مثلاً 09120000000+)</string>
+    <string name="dialog_dial_action">برقراری تماس</string>
+
+    <string name="msg_bt_perm_required_for_service">برای شروع سرویس پل تماس در اندروید ۱۲+ ابتدا مجوز بلوتوث را تأیید کنید.</string>
+    <string name="msg_mic_perm_required">برای تست میکروفون ابتدا مجوز RECORD_AUDIO را تأیید کنید.</string>
+    <string name="msg_dialer_unavailable">درخواست نقش شماره‌گیر پیش‌فرض در این نسخه اندروید یا دستگاه در دسترس نیست.</string>
+    <string name="msg_empty_logs">هنوز رویدادی ثبت نشده است.</string>
+    <string name="cd_section_icon">نماد بخش</string>
+</resources>

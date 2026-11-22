@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand_primary">#00796B</color>
+    <color name="brand_primary_dark">#004D40</color>
+    <color name="brand_secondary">#0284C7</color>
+    <color name="brand_surface_bg">#F2F6FA</color>
+    <color name="brand_card_bg">#FFFFFF</color>
+    <color name="brand_card_stroke">#D9E3EE</color>
+    <color name="brand_banner_bg">#0D1B2A</color>
+    <color name="brand_text_primary">#0F172A</color>
+    <color name="brand_text_secondary">#475569</color>
+    <color name="brand_text_on_dark">#F8FAFC</color>
+    <color name="brand_text_on_dark_muted">#94A3B8</color>
+
+    <color name="status_ok">#059669</color>
+    <color name="status_ok_bg">#E6F7F0</color>
+    <color name="status_warn">#D97706</color>
+    <color name="status_warn_bg">#FEF3C7</color>
+    <color name="status_error">#DC2626</color>
+    <color name="status_error_bg">#FEE2E2</color>
+    <color name="status_neutral">#475569</color>
+    <color name="status_neutral_bg">#E2E8F0</color>
+    <color name="log_terminal_bg">#0F172A</color>
+    <color name="log_terminal_text">#E2E8F0</color>
+</resources>

@@ -1,0 +1,6 @@
+{
+  "name": "CallBridge",
+  "description": "Android Companion cellular-to-iPhone call bridge with BLE GATT signaling, Telecom InCallService control, local network server, and modular audio test bridge.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

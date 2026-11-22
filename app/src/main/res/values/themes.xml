@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.CallBridge" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorPrimaryVariant">@color/brand_primary_dark</item>
+        <item name="colorSecondary">@color/brand_secondary</item>
+        <item name="android:windowBackground">@color/brand_surface_bg</item>
+        <item name="android:fontFamily">@font/vazirmatn</item>
+        <item name="fontFamily">@font/vazirmatn</item>
+    </style>
+
+    <style name="Widget.CallBridge.Card" parent="Widget.Material3.CardView.Outlined">
+        <item name="cardBackgroundColor">@color/brand_card_bg</item>
+        <item name="strokeColor">@color/brand_card_stroke</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">0dp</item>
+    </style>
+
+    <style name="Widget.CallBridge.SectionTitle" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textColor">@color/brand_text_primary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <style name="Widget.CallBridge.Label" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/brand_text_secondary</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <style name="Widget.CallBridge.Value" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/brand_text_primary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <style name="Widget.CallBridge.ActionButton" parent="Widget.Material3.Button.TonalButton">
+        <item name="android:minHeight">48dp</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+</resources>

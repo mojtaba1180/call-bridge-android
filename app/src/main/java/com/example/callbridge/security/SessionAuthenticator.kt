@@ -40,6 +40,11 @@ class SessionAuthenticator(
         nowMs < cooldownUntilMs
     }
 
+    fun clearCooldown() = synchronized(lock) {
+        failedAttempts = 0
+        cooldownUntilMs = 0L
+    }
+
     fun authenticatePairedDevice(
         deviceId: String?,
         bleAddress: String?,
@@ -51,7 +56,9 @@ class SessionAuthenticator(
         }
 
         if (!pairingManager.isDevicePaired(deviceId)) {
-            recordFailure(nowMs)
+            if (pairingManager.pairingState.value !is PairingState.AwaitingUserApproval) {
+                recordFailure(nowMs)
+            }
             Logger.w("Security", "Authentication rejected: device is not paired")
             return null
         }

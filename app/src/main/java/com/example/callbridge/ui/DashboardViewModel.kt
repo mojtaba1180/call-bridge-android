@@ -154,26 +154,31 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun approvePendingPairing() {
         val paired = container.pairingManager.approvePendingPairing()
         if (paired != null) {
-            container.bleSignalingServer.notifyPairingStatus(
-                PairingStatusMessage(
-                    status = "APPROVED",
-                    deviceId = paired.deviceId,
-                    message = "Pairing approved by Android user. Proceed with AUTH."
-                )
+            container.sessionAuthenticator.clearCooldown()
+            val statusMsg = PairingStatusMessage(
+                status = "APPROVED",
+                deviceId = paired.deviceId,
+                message = "Pairing approved by Android user. Proceed with AUTH."
             )
+            container.bleSignalingServer.notifyPairingStatus(statusMsg)
+            viewModelScope.launch(Dispatchers.IO) {
+                container.localNetworkManager.sendPairingStatus(statusMsg)
+            }
             _toastEvents.tryEmit("Paired with ${paired.deviceName}")
         }
     }
 
     fun rejectPendingPairing() {
         container.pairingManager.rejectPendingPairing()
-        container.bleSignalingServer.notifyPairingStatus(
-            PairingStatusMessage(
-                status = "REJECTED",
-                deviceId = null,
-                message = "Pairing rejected by Android user."
-            )
+        val statusMsg = PairingStatusMessage(
+            status = "REJECTED",
+            deviceId = null,
+            message = "Pairing rejected by Android user."
         )
+        container.bleSignalingServer.notifyPairingStatus(statusMsg)
+        viewModelScope.launch(Dispatchers.IO) {
+            container.localNetworkManager.sendPairingStatus(statusMsg)
+        }
         _toastEvents.tryEmit("Pairing request rejected")
     }
 

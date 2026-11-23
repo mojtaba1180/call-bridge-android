@@ -12,6 +12,8 @@ import com.example.callbridge.protocol.CallStateMessage
 import com.example.callbridge.protocol.CommandMessage
 import com.example.callbridge.protocol.CommandResultMessage
 import com.example.callbridge.protocol.EndpointPayload
+import com.example.callbridge.protocol.MessageSerializer
+import com.example.callbridge.protocol.PairingStatusMessage
 import com.example.callbridge.security.KeyStoreManager
 import com.example.callbridge.security.PairingManager
 import com.example.callbridge.security.SessionAuthenticator
@@ -120,6 +122,10 @@ class LocalNetworkManager(
 
     fun sendRawFrame(json: String): Boolean {
         return webSocketServer.sendRawTextFrame(json)
+    }
+
+    fun sendPairingStatus(status: PairingStatusMessage): Boolean {
+        return webSocketServer.sendRawTextFrame(MessageSerializer.serializePairingStatus(status))
     }
 
     fun refreshNetworkAndRebind() {

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base diagonal deep navy to royal cobalt canvas -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="315"
+                android:startColor="@color/cobalt_deep"
+                android:centerColor="@color/cobalt_mid"
+                android:endColor="@color/cobalt_deep"
+                android:type="linear" />
+        </shape>
+    </item>
+    <!-- Luminous soft sky-blue atmospheric glow at upper center -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.48"
+                android:centerY="0.14"
+                android:gradientRadius="320dp"
+                android:startColor="@color/cobalt_glow"
+                android:endColor="#001B4EA3" />
+        </shape>
+    </item>
+</layer-list>

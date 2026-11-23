@@ -4,124 +4,438 @@
     android:id="@+id/rootContainer"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/brand_surface_bg"
+    android:background="@drawable/bg_cobalt_canvas"
     android:orientation="vertical">
 
-    <!-- Compact Hero Header Bar -->
+    <!-- Floating Atmospheric Cobalt Header with Frosted Glass Controls -->
     <LinearLayout
         android:id="@+id/topHeaderBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_hero_header"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="16dp"
+        android:paddingHorizontal="20dp"
         android:paddingTop="12dp"
-        android:paddingBottom="12dp">
+        android:paddingBottom="18dp">
 
-        <ImageView
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:contentDescription="@string/app_name"
-            android:src="@drawable/ic_callbridge_icon" />
+        <!-- Frosted Circle: Diagnostics & Live Logs -->
+        <ImageButton
+            android:id="@+id/btnOpenDiagnostics"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_glass_circle"
+            android:contentDescription="@string/action_open_diagnostics"
+            android:padding="13dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_terminal_log"
+            app:tint="@color/brand_text_on_dark" />
 
-        <LinearLayout
+        <!-- Center Frosted Status Identity Pill -->
+        <FrameLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:paddingHorizontal="10dp">
 
-            <TextView
+            <LinearLayout
+                android:id="@+id/pillHeaderBrand"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/app_name"
-                android:textColor="@color/brand_text_on_dark"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:layout_height="44dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_glass_pill"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:paddingEnd="14dp">
 
-            <TextView
-                android:id="@+id/tvHeaderServiceBadge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/service_stopped"
-                android:textColor="@color/brand_text_on_dark_muted"
-                android:textSize="11sp" />
-        </LinearLayout>
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:background="@drawable/bg_glass_circle"
+                    android:contentDescription="@string/app_name"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_shield_check"
+                    app:tint="@color/brand_text_on_dark" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnOpenDiagnostics"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginEnd="6dp"
-            android:minWidth="48dp"
-            android:paddingHorizontal="10dp"
-            android:text="@string/nav_diagnostics"
-            android:textColor="@color/brand_text_on_dark"
-            android:textSize="12sp"
-            app:icon="@drawable/ic_terminal_log"
-            app:iconSize="16dp"
-            app:iconTint="@color/brand_text_on_dark"
-            app:strokeColor="#33FFFFFF" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="9dp"
+                    android:orientation="vertical">
 
-        <com.google.android.material.button.MaterialButton
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:text="@string/app_name"
+                        android:textColor="@color/brand_text_on_dark"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvHeaderServiceBadge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:text="@string/service_stopped"
+                        android:textColor="@color/brand_text_on_dark_muted"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/viewHeaderStatusDot"
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_status_dot" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <!-- Frosted Circle: Persian / English Toggle -->
+        <TextView
             android:id="@+id/btnToggleLanguage"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="wrap_content"
+            android:layout_width="48dp"
             android:layout_height="48dp"
-            android:minWidth="48dp"
-            android:paddingHorizontal="10dp"
+            android:background="@drawable/bg_glass_circle"
+            android:clickable="true"
+            android:contentDescription="@string/action_switch_language"
+            android:focusable="true"
+            android:gravity="center"
             android:text="@string/action_switch_language"
             android:textColor="@color/brand_text_on_dark"
-            android:textSize="12sp"
-            app:strokeColor="#33FFFFFF" />
+            android:textSize="13sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- 6-Screen Content Switcher -->
-    <FrameLayout
-        android:id="@+id/contentHost"
+    <!-- Elevated 32dp Top-Rounded Pure White Minimalist Sheet -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:background="@drawable/bg_white_sheet"
+        android:clipChildren="true"
+        android:clipToPadding="true"
+        android:orientation="vertical">
 
-        <include
-            android:id="@+id/tabDashboard"
-            layout="@layout/layout_tab_dashboard"
-            android:visibility="visible" />
+        <!-- Screen Content Stack -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
 
-        <include
-            android:id="@+id/tabMessages"
-            layout="@layout/layout_tab_messages"
-            android:visibility="gone" />
+            <include
+                android:id="@+id/tabDashboard"
+                layout="@layout/layout_tab_dashboard"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
 
-        <include
-            android:id="@+id/tabContacts"
-            layout="@layout/layout_tab_contacts"
-            android:visibility="gone" />
+            <include
+                android:id="@+id/tabMessages"
+                layout="@layout/layout_tab_messages"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
 
-        <include
-            android:id="@+id/tabCalls"
-            layout="@layout/layout_tab_calls"
-            android:visibility="gone" />
+            <include
+                android:id="@+id/tabContacts"
+                layout="@layout/layout_tab_contacts"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
 
-        <include
-            android:id="@+id/tabPairing"
-            layout="@layout/layout_tab_pairing"
-            android:visibility="gone" />
+            <include
+                android:id="@+id/tabCalls"
+                layout="@layout/layout_tab_calls"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
 
-        <include
-            android:id="@+id/tabDiagnostics"
-            layout="@layout/layout_tab_diagnostics"
-            android:visibility="gone" />
-    </FrameLayout>
+            <include
+                android:id="@+id/tabPairing"
+                layout="@layout/layout_tab_pairing"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
 
-    <!-- Bottom Navigation -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNav"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/brand_card_bg"
-        app:labelVisibilityMode="labeled"
-        app:menu="@menu/menu_bottom_nav" />
+            <include
+                android:id="@+id/tabDiagnostics"
+                layout="@layout/layout_tab_diagnostics"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Hairline Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:alpha="0.7"
+            android:background="@color/brand_card_stroke" />
+
+        <!-- Minimalist Pill Bottom Navigation Bar -->
+        <LinearLayout
+            android:id="@+id/bottomNavContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/brand_surface_bg"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp">
+
+            <LinearLayout
+                android:id="@+id/customBottomNav"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:baselineAligned="false"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <!-- Tab 1: Dashboard -->
+                <LinearLayout
+                    android:id="@+id/navItemDashboard"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_nav_active_pill"
+                    android:clickable="true"
+                    android:contentDescription="@string/nav_dashboard"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:minWidth="48dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="14dp">
+
+                    <ImageView
+                        android:id="@+id/ivNavDashboard"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_dashboard_home"
+                        app:tint="@color/brand_text_primary" />
+
+                    <TextView
+                        android:id="@+id/tvNavDashboard"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:maxLines="1"
+                        android:text="@string/nav_dashboard"
+                        android:textColor="@color/brand_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <View
+                        android:id="@+id/dotNavDashboard"
+                        android:layout_width="5dp"
+                        android:layout_height="5dp"
+                        android:layout_marginStart="7dp"
+                        android:background="@drawable/bg_status_dot"
+                        android:backgroundTint="@color/brand_primary" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <!-- Tab 2: Messages -->
+                <LinearLayout
+                    android:id="@+id/navItemMessages"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_nav_inactive_circle"
+                    android:clickable="true"
+                    android:contentDescription="@string/nav_messages"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:minWidth="48dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="12dp">
+
+                    <ImageView
+                        android:id="@+id/ivNavMessages"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_messages_sms"
+                        app:tint="@color/brand_text_muted" />
+
+                    <TextView
+                        android:id="@+id/tvNavMessages"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:maxLines="1"
+                        android:text="@string/nav_messages"
+                        android:textColor="@color/brand_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
+                    <View
+                        android:id="@+id/dotNavMessages"
+                        android:layout_width="5dp"
+                        android:layout_height="5dp"
+                        android:layout_marginStart="7dp"
+                        android:background="@drawable/bg_status_dot"
+                        android:backgroundTint="@color/brand_primary"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <!-- Tab 3: Contacts -->
+                <LinearLayout
+                    android:id="@+id/navItemContacts"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_nav_inactive_circle"
+                    android:clickable="true"
+                    android:contentDescription="@string/nav_contacts"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:minWidth="48dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="12dp">
+
+                    <ImageView
+                        android:id="@+id/ivNavContacts"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_contacts_sync"
+                        app:tint="@color/brand_text_muted" />
+
+                    <TextView
+                        android:id="@+id/tvNavContacts"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:maxLines="1"
+                        android:text="@string/nav_contacts"
+                        android:textColor="@color/brand_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
+                    <View
+                        android:id="@+id/dotNavContacts"
+                        android:layout_width="5dp"
+                        android:layout_height="5dp"
+                        android:layout_marginStart="7dp"
+                        android:background="@drawable/bg_status_dot"
+                        android:backgroundTint="@color/brand_primary"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <!-- Tab 4: Calls -->
+                <LinearLayout
+                    android:id="@+id/navItemCalls"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_nav_inactive_circle"
+                    android:clickable="true"
+                    android:contentDescription="@string/nav_calls"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:minWidth="48dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="12dp">
+
+                    <ImageView
+                        android:id="@+id/ivNavCalls"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_phone_call"
+                        app:tint="@color/brand_text_muted" />
+
+                    <TextView
+                        android:id="@+id/tvNavCalls"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:maxLines="1"
+                        android:text="@string/nav_calls"
+                        android:textColor="@color/brand_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
+                    <View
+                        android:id="@+id/dotNavCalls"
+                        android:layout_width="5dp"
+                        android:layout_height="5dp"
+                        android:layout_marginStart="7dp"
+                        android:background="@drawable/bg_status_dot"
+                        android:backgroundTint="@color/brand_primary"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <!-- Tab 5: Pairing -->
+                <LinearLayout
+                    android:id="@+id/navItemPairing"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_nav_inactive_circle"
+                    android:clickable="true"
+                    android:contentDescription="@string/nav_pairing"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:minWidth="48dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="12dp">
+
+                    <ImageView
+                        android:id="@+id/ivNavPairing"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_qr_pairing"
+                        app:tint="@color/brand_text_muted" />
+
+                    <TextView
+                        android:id="@+id/tvNavPairing"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:maxLines="1"
+                        android:text="@string/nav_pairing"
+                        android:textColor="@color/brand_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
+                    <View
+                        android:id="@+id/dotNavPairing"
+                        android:layout_width="5dp"
+                        android:layout_height="5dp"
+                        android:layout_marginStart="7dp"
+                        android:background="@drawable/bg_status_dot"
+                        android:backgroundTint="@color/brand_primary"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
 </LinearLayout>

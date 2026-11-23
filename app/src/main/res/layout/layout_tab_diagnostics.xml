@@ -1,103 +1,127 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:paddingHorizontal="20dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="16dp">
 
-    <com.google.android.material.card.MaterialCardView
-        style="@style/Widget.CallBridge.Card"
+    <!-- Header -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/nav_diagnostics"
+        style="@style/Widget.CallBridge.MicroLabel" />
+
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp">
+        android:layout_marginTop="4dp"
+        android:text="@string/section_diagnostics"
+        style="@style/Widget.CallBridge.HeroValue"
+        android:textSize="20sp" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <TextView
-                style="@style/Widget.CallBridge.SectionTitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/section_diagnostics" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:orientation="horizontal">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTestBle"
-                    style="@style/Widget.CallBridge.ActionButton"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_marginEnd="4dp"
-                    android:layout_weight="1"
-                    android:text="@string/action_test_ble" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTestWss"
-                    style="@style/Widget.CallBridge.ActionButton"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_marginHorizontal="4dp"
-                    android:layout_weight="1"
-                    android:text="@string/action_test_wss" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTestMicDiag"
-                    style="@style/Widget.CallBridge.ActionButton"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="4dp"
-                    android:layout_weight="1"
-                    android:text="@string/action_test_mic" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tvLastDiagnosticResult"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:fontFamily="@font/jetbrains_mono"
-                android:text="Ready"
-                android:textColor="@color/brand_text_secondary"
-                android:textSize="11sp" />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
+    <!-- Self-Test Pill Row -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnTestBle"
+            style="@style/Widget.CallBridge.PillAction"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_primary_pill_btn"
+            android:text="@string/action_test_ble"
+            android:textColor="@color/brand_text_on_dark" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnTestWss"
+            style="@style/Widget.CallBridge.PillAction"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_marginHorizontal="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_secondary_pill_btn"
+            android:text="@string/action_test_wss"
+            android:textColor="@color/brand_text_primary" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnTestMicDiag"
+            style="@style/Widget.CallBridge.PillAction"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_secondary_pill_btn"
+            android:text="@string/action_test_mic"
+            android:textColor="@color/brand_text_primary" />
+    </LinearLayout>
+
+    <!-- Latest Diagnostic Result Pill Tile -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_soft_tile"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp">
+
+        <TextView
+            android:id="@+id/tvLastDiagnosticResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/jetbrains_mono"
+            android:text="—"
+            android:textColor="@color/brand_text_primary"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <!-- Console Section Header + Clear Pill -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
         <TextView
-            style="@style/Widget.CallBridge.SectionTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/section_event_log" />
+            android:text="@string/section_event_log"
+            style="@style/Widget.CallBridge.MicroLabel" />
 
-        <com.google.android.material.button.MaterialButton
+        <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btnClearLogs"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@style/Widget.CallBridge.PermGrantPill"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:text="@string/action_clear_logs" />
     </LinearLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvEventLogs"
+    <!-- Midnight Rounded Live Event Console -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginTop="4dp"
         android:layout_weight="1"
-        android:background="@color/log_terminal_bg"
-        android:clipToPadding="false"
-        android:padding="10dp" />
+        android:background="@drawable/bg_terminal_card"
+        android:clipToOutline="true"
+        android:padding="10dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvEventLogs"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:overScrollMode="never" />
+    </FrameLayout>
+
 </LinearLayout>

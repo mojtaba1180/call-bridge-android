@@ -3,241 +3,303 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    android:overScrollMode="never"
+    android:paddingHorizontal="20dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="24dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:orientation="vertical">
 
-        <!-- Telecom Call Control Card -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.CallBridge.Card"
+        <!-- Hero Call State Readout -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/label_call_state"
+            style="@style/Widget.CallBridge.MicroLabel" />
+
+        <TextView
+            android:id="@+id/tvCallState"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginTop="4dp"
+            android:text="IDLE"
+            style="@style/Widget.CallBridge.HeroValue" />
+
+        <TextView
+            android:id="@+id/tvCallerInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="—"
+            android:textColor="@color/brand_text_secondary"
+            android:textSize="13sp" />
+
+        <!-- Primary Call Control Row (Answer / Reject / Hang Up) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:orientation="horizontal">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnAnswerCall"
+                style="@style/Widget.CallBridge.PillAction"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_primary_pill_btn"
+                android:text="@string/action_answer"
+                android:textColor="@color/brand_text_on_dark" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnRejectCall"
+                style="@style/Widget.CallBridge.PillAction"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginHorizontal="4dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_secondary_pill_btn"
+                android:text="@string/action_reject"
+                android:textColor="@color/brand_text_primary" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnHangupCall"
+                style="@style/Widget.CallBridge.PillAction"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_danger_pill_btn"
+                android:text="@string/action_hangup"
+                android:textColor="@color/status_error" />
+        </LinearLayout>
+
+        <!-- Secondary Dial / Default Dialer Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnDialNumber"
+                style="@style/Widget.CallBridge.PillAction"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_secondary_pill_btn"
+                android:text="@string/action_dial"
+                android:textColor="@color/brand_text_primary" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnSetDefaultDialer"
+                style="@style/Widget.CallBridge.PillAction"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1.2"
+                android:background="@drawable/bg_secondary_pill_btn"
+                android:text="@string/action_set_default_dialer"
+                android:textColor="@color/brand_primary" />
+        </LinearLayout>
+
+        <!-- 2-Column Bento Tiles (Observed Calls + Capability) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_soft_tile"
                 android:orientation="vertical"
                 android:padding="16dp">
 
                 <TextView
-                    style="@style/Widget.CallBridge.SectionTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/section_calls_control" />
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/label_observed_calls"
+                    style="@style/Widget.CallBridge.MicroLabel" />
 
-                <TextView
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="@string/label_call_state" />
-                <TextView
-                    android:id="@+id/tvCallState"
-                    style="@style/Widget.CallBridge.Value"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="IDLE" />
-
-                <TextView
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/label_caller" />
-                <TextView
-                    android:id="@+id/tvCallerInfo"
-                    style="@style/Widget.CallBridge.Value"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="—" />
-
-                <TextView
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/label_call_control_cap" />
-                <TextView
-                    android:id="@+id/tvCallCapability"
-                    style="@style/Widget.CallBridge.Value"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="MONITOR_ONLY" />
-
-                <TextView
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/label_observed_calls" />
                 <TextView
                     android:id="@+id/tvObservedCallsCount"
-                    style="@style/Widget.CallBridge.Value"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="0" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:background="@color/status_ok_bg"
-                    android:padding="10dp"
-                    android:text="@string/calllog_creator_notice"
-                    android:textColor="@color/status_ok"
-                    android:textSize="12sp" />
-
-                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnAnswerCall"
-                        style="@style/Widget.CallBridge.ActionButton"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_marginEnd="4dp"
-                        android:layout_weight="1"
-                        android:text="@string/action_answer" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnRejectCall"
-                        style="@style/Widget.CallBridge.ActionButton"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_marginHorizontal="4dp"
-                        android:layout_weight="1"
-                        android:text="@string/action_reject" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnHangupCall"
-                        style="@style/Widget.CallBridge.ActionButton"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_marginStart="4dp"
-                        android:layout_weight="1"
-                        android:text="@string/action_hangup" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnDialNumber"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_marginEnd="6dp"
-                        android:layout_weight="1"
-                        android:text="@string/action_dial"
-                        app:cornerRadius="12dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnSetDefaultDialer"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_marginStart="6dp"
-                        android:layout_weight="1"
-                        android:text="@string/action_set_default_dialer"
-                        app:cornerRadius="12dp" />
-                </LinearLayout>
+                    android:text="0"
+                    style="@style/Widget.CallBridge.TileValue"
+                    android:textSize="22sp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Isolated Audio & Cellular Audio Honesty Card -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.CallBridge.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_soft_tile"
                 android:orientation="vertical"
                 android:padding="16dp">
 
                 <TextView
-                    style="@style/Widget.CallBridge.SectionTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/section_audio_isolation" />
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/label_call_control_cap"
+                    style="@style/Widget.CallBridge.MicroLabel" />
 
                 <TextView
+                    android:id="@+id/tvCallCapability"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:background="@color/status_warn_bg"
-                    android:padding="10dp"
-                    android:text="@string/audio_limitation_notice"
-                    android:textColor="@color/status_warn"
-                    android:textSize="12sp" />
+                    android:layout_marginTop="12dp"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:text="—"
+                    android:textColor="@color/brand_text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Minimalist Audio Isolation & Mic Test Tile -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_soft_tile"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <View
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:background="@drawable/bg_status_dot"
+                    android:backgroundTint="@color/status_warn" />
 
                 <TextView
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="@string/label_cellular_audio_cap" />
-                <TextView
-                    android:id="@+id/tvCellularAudioCap"
-                    style="@style/Widget.CallBridge.Value"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="CELLULAR_AUDIO_UNAVAILABLE" />
-
-                <TextView
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/label_mic_rms" />
-                <TextView
-                    android:id="@+id/tvMicRmsLevel"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/jetbrains_mono"
-                    android:text="0"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:text="@string/section_audio_isolation"
                     android:textColor="@color/brand_text_primary"
                     android:textSize="13sp"
                     android:textStyle="bold" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnStartMicTest"
-                        style="@style/Widget.CallBridge.ActionButton"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_marginEnd="6dp"
-                        android:layout_weight="1"
-                        android:text="@string/action_start_mic_test" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnStopMicTest"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_marginStart="6dp"
-                        android:layout_weight="1"
-                        android:text="@string/action_stop_mic_test"
-                        app:cornerRadius="12dp" />
-                </LinearLayout>
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_mic_audio"
+                    app:tint="@color/brand_text_muted" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:id="@+id/tvCellularAudioCap"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:fontFamily="@font/jetbrains_mono"
+                android:text="CELLULAR_AUDIO_UNAVAILABLE"
+                android:textColor="@color/status_warn"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:lineSpacingExtra="3dp"
+                android:text="@string/audio_limitation_notice"
+                android:textColor="@color/brand_text_secondary"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/label_mic_rms"
+                    style="@style/Widget.CallBridge.MicroLabel" />
+
+                <TextView
+                    android:id="@+id/tvMicRmsLevel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/jetbrains_mono"
+                    android:text="0"
+                    android:textColor="@color/brand_text_primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:orientation="horizontal">
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnStartMicTest"
+                    style="@style/Widget.CallBridge.PillAction"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_white_inner_card"
+                    android:text="@string/action_start_mic_test"
+                    android:textColor="@color/brand_primary" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnStopMicTest"
+                    style="@style/Widget.CallBridge.PillAction"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_white_inner_card"
+                    android:text="@string/action_stop_mic_test"
+                    android:textColor="@color/brand_text_secondary" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Minimalist Play Creator Call Log Notice -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:paddingHorizontal="4dp"
+            android:lineSpacingExtra="2dp"
+            android:text="@string/calllog_creator_notice"
+            android:textColor="@color/brand_text_muted"
+            android:textSize="11sp" />
+
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

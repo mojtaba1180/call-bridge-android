@@ -2,36 +2,37 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layoutDirection="ltr"
     android:orientation="horizontal"
-    android:paddingHorizontal="10dp"
-    android:paddingVertical="5dp"
-    android:layoutDirection="ltr">
+    android:paddingHorizontal="8dp"
+    android:paddingVertical="5dp">
 
     <TextView
         android:id="@+id/tvLogTime"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:fontFamily="@font/jetbrains_mono"
-        android:textColor="#94A3B8"
-        android:textSize="11sp" />
+        android:textColor="#7D8FA8"
+        android:textSize="10.5sp" />
 
     <TextView
         android:id="@+id/tvLogCategory"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="6dp"
+        android:layout_marginStart="8dp"
         android:fontFamily="@font/jetbrains_mono"
-        android:textStyle="bold"
-        android:textSize="11sp" />
+        android:textSize="10.5sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/tvLogMessage"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="6dp"
+        android:layout_marginStart="8dp"
         android:layout_weight="1"
         android:fontFamily="@font/jetbrains_mono"
+        android:lineSpacingExtra="1.5dp"
         android:textColor="@color/log_terminal_text"
-        android:textSize="11sp" />
+        android:textSize="10.5sp" />
 
 </LinearLayout>

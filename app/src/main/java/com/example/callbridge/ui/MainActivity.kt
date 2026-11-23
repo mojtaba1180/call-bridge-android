@@ -2,11 +2,17 @@ package com.example.callbridge.ui
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Bundle
+import android.transition.TransitionManager
 import android.view.View
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -37,7 +43,7 @@ import kotlinx.coroutines.launch
 
 /**
  * BridgeLink Android Companion Activity (Native XML + ViewBinding, Persian RTL default + English toggle).
- * Hosts 6 functional screens: Dashboard, Messages, Contacts, Calls & Audio, Pairing, and Diagnostics.
+ * Hosts 6 functional screens inside a minimalist cobalt + floating white sheet layout.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -49,6 +55,15 @@ class MainActivity : AppCompatActivity() {
         DASHBOARD, MESSAGES, CONTACTS, CALLS, PAIRING, DIAGNOSTICS
     }
 
+    private data class NavTabViews(
+        val tab: ScreenTab,
+        val container: LinearLayout,
+        val icon: ImageView,
+        val label: TextView,
+        val dot: View
+    )
+
+    private lateinit var navItems: List<NavTabViews>
     private var activeTab = ScreenTab.DASHBOARD
     private var lastPromptedPairingRequestAt: Long = 0L
 
@@ -74,7 +89,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+        )
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -102,12 +119,17 @@ class MainActivity : AppCompatActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.rootContainer) { _, insets ->
             val sysBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             binding.topHeaderBar.setPadding(
-                binding.topHeaderBar.paddingLeft,
-                sysBars.top + dp(10),
-                binding.topHeaderBar.paddingRight,
-                dp(12)
+                dp(20),
+                sysBars.top + dp(12),
+                dp(20),
+                dp(18)
             )
-            binding.bottomNav.setPadding(0, 0, 0, sysBars.bottom)
+            binding.bottomNavContainer.setPadding(
+                dp(16),
+                dp(10),
+                dp(16),
+                sysBars.bottom + dp(10)
+            )
             insets
         }
     }
@@ -116,7 +138,7 @@ class MainActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (activeTab != ScreenTab.DASHBOARD) {
-                    selectTab(ScreenTab.DASHBOARD, syncBottomNav = true)
+                    selectTab(ScreenTab.DASHBOARD, animateNav = true)
                 } else {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
@@ -135,29 +157,37 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupNavigation() {
-        binding.bottomNav.setOnItemSelectedListener { item ->
-            val next = when (item.itemId) {
-                R.id.nav_dashboard -> ScreenTab.DASHBOARD
-                R.id.nav_messages -> ScreenTab.MESSAGES
-                R.id.nav_contacts -> ScreenTab.CONTACTS
-                R.id.nav_calls -> ScreenTab.CALLS
-                R.id.nav_pairing -> ScreenTab.PAIRING
-                else -> ScreenTab.DASHBOARD
+        navItems = listOf(
+            NavTabViews(ScreenTab.DASHBOARD, binding.navItemDashboard, binding.ivNavDashboard, binding.tvNavDashboard, binding.dotNavDashboard),
+            NavTabViews(ScreenTab.MESSAGES, binding.navItemMessages, binding.ivNavMessages, binding.tvNavMessages, binding.dotNavMessages),
+            NavTabViews(ScreenTab.CONTACTS, binding.navItemContacts, binding.ivNavContacts, binding.tvNavContacts, binding.dotNavContacts),
+            NavTabViews(ScreenTab.CALLS, binding.navItemCalls, binding.ivNavCalls, binding.tvNavCalls, binding.dotNavCalls),
+            NavTabViews(ScreenTab.PAIRING, binding.navItemPairing, binding.ivNavPairing, binding.tvNavPairing, binding.dotNavPairing)
+        )
+
+        navItems.forEach { item ->
+            item.container.setOnClickListener {
+                selectTab(item.tab, animateNav = true)
             }
-            selectTab(next, syncBottomNav = false)
-            true
+        }
+
+        binding.pillHeaderBrand.setOnClickListener {
+            selectTab(ScreenTab.DASHBOARD, animateNav = true)
         }
 
         binding.btnOpenDiagnostics.setOnClickListener {
-            selectTab(ScreenTab.DIAGNOSTICS, syncBottomNav = false)
+            val next = if (activeTab == ScreenTab.DIAGNOSTICS) ScreenTab.DASHBOARD else ScreenTab.DIAGNOSTICS
+            selectTab(next, animateNav = true)
         }
 
         binding.btnToggleLanguage.setOnClickListener {
             toggleLanguage()
         }
+
+        selectTab(ScreenTab.DASHBOARD, animateNav = false)
     }
 
-    private fun selectTab(tab: ScreenTab, syncBottomNav: Boolean) {
+    private fun selectTab(tab: ScreenTab, animateNav: Boolean) {
         activeTab = tab
         binding.tabDashboard.root.visibility = if (tab == ScreenTab.DASHBOARD) View.VISIBLE else View.GONE
         binding.tabMessages.root.visibility = if (tab == ScreenTab.MESSAGES) View.VISIBLE else View.GONE
@@ -166,19 +196,26 @@ class MainActivity : AppCompatActivity() {
         binding.tabPairing.root.visibility = if (tab == ScreenTab.PAIRING) View.VISIBLE else View.GONE
         binding.tabDiagnostics.root.visibility = if (tab == ScreenTab.DIAGNOSTICS) View.VISIBLE else View.GONE
 
-        if (syncBottomNav) {
-            val navId = when (tab) {
-                ScreenTab.DASHBOARD -> R.id.nav_dashboard
-                ScreenTab.MESSAGES -> R.id.nav_messages
-                ScreenTab.CONTACTS -> R.id.nav_contacts
-                ScreenTab.CALLS -> R.id.nav_calls
-                ScreenTab.PAIRING -> R.id.nav_pairing
-                ScreenTab.DIAGNOSTICS -> null
-            }
-            if (navId != null && binding.bottomNav.selectedItemId != navId) {
-                binding.bottomNav.selectedItemId = navId
-            }
+        if (animateNav) {
+            TransitionManager.beginDelayedTransition(binding.customBottomNav)
         }
+
+        val activeTint = ContextCompat.getColor(this, R.color.brand_text_primary)
+        val inactiveTint = ContextCompat.getColor(this, R.color.brand_text_muted)
+
+        navItems.forEach { item ->
+            val isSelected = item.tab == tab
+            item.container.setBackgroundResource(
+                if (isSelected) R.drawable.bg_nav_active_pill else R.drawable.bg_nav_inactive_circle
+            )
+            val horizontalPad = if (isSelected) dp(14) else dp(12)
+            item.container.setPadding(horizontalPad, 0, horizontalPad, 0)
+            item.icon.imageTintList = ColorStateList.valueOf(if (isSelected) activeTint else inactiveTint)
+            item.label.visibility = if (isSelected) View.VISIBLE else View.GONE
+            item.dot.visibility = if (isSelected) View.VISIBLE else View.GONE
+        }
+
+        binding.btnOpenDiagnostics.alpha = if (tab == ScreenTab.DIAGNOSTICS) 1.0f else 0.88f
     }
 
     private fun setupButtonHandlers() {
@@ -263,13 +300,15 @@ class MainActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.serviceState.collect { state ->
-                        val label = when (state) {
-                            BridgeServiceState.RUNNING -> getString(R.string.service_running)
-                            BridgeServiceState.STARTING -> getString(R.string.service_starting)
-                            BridgeServiceState.ERROR -> getString(R.string.service_error)
-                            BridgeServiceState.STOPPED -> getString(R.string.service_stopped)
+                        val (label, dotColorRes) = when (state) {
+                            BridgeServiceState.RUNNING -> getString(R.string.service_running) to R.color.status_ok
+                            BridgeServiceState.STARTING -> getString(R.string.service_starting) to R.color.status_warn
+                            BridgeServiceState.ERROR -> getString(R.string.service_error) to R.color.status_error
+                            BridgeServiceState.STOPPED -> getString(R.string.service_stopped) to R.color.brand_text_on_dark_muted
                         }
                         binding.tvHeaderServiceBadge.text = label
+                        binding.viewHeaderStatusDot.backgroundTintList =
+                            ColorStateList.valueOf(ContextCompat.getColor(this@MainActivity, dotColorRes))
                         binding.tabDashboard.tvServiceStateDetail.text = label
                         binding.tabDashboard.btnStartBridge.isEnabled = state != BridgeServiceState.RUNNING
                         binding.tabDashboard.btnStopBridge.isEnabled = state == BridgeServiceState.RUNNING
@@ -334,6 +373,25 @@ class MainActivity : AppCompatActivity() {
                         renderGrantState(binding.tabDashboard.tvPermCallPhone, snap.callPhone)
                         renderGrantState(binding.tabDashboard.tvPermDialerRole, snap.defaultDialerRole)
                         renderGrantState(binding.tabDashboard.tvPermBattery, snap.batteryOptimizationIgnored)
+
+                        val states = listOf(
+                            snap.bluetooth,
+                            snap.phoneState,
+                            contactsState,
+                            snap.notifications,
+                            snap.microphone,
+                            snap.callPhone,
+                            snap.defaultDialerRole,
+                            snap.batteryOptimizationIgnored
+                        )
+                        val readyCount = states.count {
+                            it == GrantState.GRANTED || it == GrantState.NOT_REQUIRED_ON_API
+                        }
+                        val pct = (readyCount * 100) / states.size
+                        binding.tabDashboard.pbReadiness.progress = pct
+                        binding.tabDashboard.tvReadinessPercent.text = "$pct%"
+                        binding.tabDashboard.tvReadinessDetail.text =
+                            "$readyCount/${states.size} • ${getString(R.string.status_creator_safe)}"
                     }
                 }
 
@@ -515,7 +573,7 @@ class MainActivity : AppCompatActivity() {
     private fun handleIncomingDialIntent(intent: Intent?) {
         val data = intent?.data ?: return
         if (data.scheme == "tel" && !data.schemeSpecificPart.isNullOrBlank()) {
-            selectTab(ScreenTab.CALLS, syncBottomNav = true)
+            selectTab(ScreenTab.CALLS, animateNav = true)
             BridgeActionDialogs.showDialDialog(this) { number -> viewModel.dialNumber(number) }
         }
     }

@@ -1,25 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="brand_primary">#00796B</color>
-    <color name="brand_primary_dark">#004D40</color>
-    <color name="brand_secondary">#0284C7</color>
-    <color name="brand_surface_bg">#F2F6FA</color>
-    <color name="brand_card_bg">#FFFFFF</color>
-    <color name="brand_card_stroke">#D9E3EE</color>
-    <color name="brand_banner_bg">#0D1B2A</color>
-    <color name="brand_text_primary">#0F172A</color>
-    <color name="brand_text_secondary">#475569</color>
-    <color name="brand_text_on_dark">#F8FAFC</color>
-    <color name="brand_text_on_dark_muted">#94A3B8</color>
+    <!-- Atmospheric Royal Cobalt Palette (Light Mode) -->
+    <color name="cobalt_deep">#0B204A</color>
+    <color name="cobalt_mid">#1B4EA3</color>
+    <color name="cobalt_bright">#2E6CD4</color>
+    <color name="cobalt_glow">#667EB6FF</color>
 
-    <color name="status_ok">#059669</color>
-    <color name="status_ok_bg">#E6F7F0</color>
+    <color name="brand_primary">#1D4ED8</color>
+    <color name="brand_primary_dark">#0F2958</color>
+    <color name="brand_secondary">#3B82F6</color>
+
+    <!-- Minimalist White Sheet & Whisper-Soft Tiles -->
+    <color name="brand_surface_bg">#FFFFFF</color>
+    <color name="brand_card_bg">#F6F8FB</color>
+    <color name="brand_card_elevated">#FFFFFF</color>
+    <color name="brand_card_stroke">#EEF2F6</color>
+    <color name="brand_pill_neutral">#F1F4F9</color>
+    <color name="brand_nav_pill">#F3F6FA</color>
+    <color name="brand_banner_bg">#0E2553</color>
+
+    <!-- Crisp Typography Ink -->
+    <color name="brand_text_primary">#0F172A</color>
+    <color name="brand_text_secondary">#64748B</color>
+    <color name="brand_text_muted">#94A3B8</color>
+    <color name="brand_text_on_dark">#FFFFFF</color>
+    <color name="brand_text_on_dark_muted">#C8DCFF</color>
+
+    <!-- Calm Semantic Status Tokens -->
+    <color name="status_ok">#10B981</color>
+    <color name="status_ok_bg">#ECFDF5</color>
     <color name="status_warn">#D97706</color>
-    <color name="status_warn_bg">#FEF3C7</color>
+    <color name="status_warn_bg">#FFFBEB</color>
     <color name="status_error">#DC2626</color>
-    <color name="status_error_bg">#FEE2E2</color>
-    <color name="status_neutral">#475569</color>
-    <color name="status_neutral_bg">#E2E8F0</color>
-    <color name="log_terminal_bg">#0F172A</color>
+    <color name="status_error_bg">#FEF2F2</color>
+    <color name="status_neutral">#64748B</color>
+    <color name="status_neutral_bg">#EEF2F6</color>
+
+    <!-- Midnight Console -->
+    <color name="log_terminal_bg">#0B1528</color>
     <color name="log_terminal_text">#E2E8F0</color>
 </resources>

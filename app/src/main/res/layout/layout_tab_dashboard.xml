@@ -3,468 +3,636 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    android:overScrollMode="never"
+    android:paddingHorizontal="20dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="24dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:orientation="vertical">
 
-        <!-- Service Control & Master Sync Card -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.CallBridge.Card"
+        <!-- Hero Service Readout (Minimalist Paylane Balance Style) -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/nav_dashboard"
+            style="@style/Widget.CallBridge.MicroLabel" />
+
+        <TextView
+            android:id="@+id/tvServiceStateDetail"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginTop="4dp"
+            android:text="@string/service_stopped"
+            style="@style/Widget.CallBridge.HeroValue" />
 
+        <TextView
+            android:id="@+id/tvDeviceApiSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/brand_text_secondary"
+            android:textSize="12sp" />
+
+        <!-- Primary Dual Pill Actions (PAY / REQUEST style) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:orientation="horizontal">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnStartBridge"
+                style="@style/Widget.CallBridge.PillAction"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_primary_pill_btn"
+                android:text="@string/action_start_bridge"
+                android:textColor="@color/brand_text_on_dark" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnStopBridge"
+                style="@style/Widget.CallBridge.PillAction"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_secondary_pill_btn"
+                android:text="@string/action_stop_bridge"
+                android:textColor="@color/brand_text_primary" />
+        </LinearLayout>
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnSyncAndroidToIphone"
+            style="@style/Widget.CallBridge.PillAction"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_secondary_pill_btn"
+            android:text="@string/action_sync_all"
+            android:textColor="@color/brand_text_primary" />
+
+        <!-- 2-Column Minimalist Bento Grid: Row 1 (iPhone + BLE) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <!-- Tile: iPhone Link -->
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_soft_tile"
                 android:orientation="vertical"
                 android:padding="16dp">
-
-                <TextView
-                    android:id="@+id/tvServiceStateDetail"
-                    style="@style/Widget.CallBridge.SectionTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/service_stopped" />
-
-                <TextView
-                    android:id="@+id/tvDeviceApiSummary"
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Android" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:gravity="center_vertical"
                     android:orientation="horizontal">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnStartBridge"
+                    <TextView
                         android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_marginEnd="6dp"
+                        android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="@string/action_start_bridge"
-                        app:cornerRadius="12dp" />
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/label_iphone_status"
+                        style="@style/Widget.CallBridge.MicroLabel" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnStopBridge"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_marginStart="6dp"
-                        android:layout_weight="1"
-                        android:text="@string/action_stop_bridge"
-                        app:cornerRadius="12dp" />
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_bluetooth_bridge"
+                        app:tint="@color/brand_text_muted" />
                 </LinearLayout>
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSyncAndroidToIphone"
-                    style="@style/Widget.CallBridge.ActionButton"
+                <TextView
+                    android:id="@+id/tvIphoneStatus"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/action_sync_all" />
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:text="@string/status_disconnected"
+                    style="@style/Widget.CallBridge.TileValue"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/tvBleStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:text="@string/status_inactive"
+                    android:textColor="@color/brand_text_secondary"
+                    android:textSize="11sp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <!-- Connection, BLE, WSS & Sync Overview -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.CallBridge.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
-
+            <!-- Tile: TLS WSS + mDNS -->
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_soft_tile"
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <TextView
-                    style="@style/Widget.CallBridge.SectionTitle"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/section_connection" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                <TextView
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="@string/label_iphone_status" />
-                <TextView
-                    android:id="@+id/tvIphoneStatus"
-                    style="@style/Widget.CallBridge.Value"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/status_disconnected" />
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/label_wss_endpoint"
+                        style="@style/Widget.CallBridge.MicroLabel" />
 
-                <TextView
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/label_ble_status" />
-                <TextView
-                    android:id="@+id/tvBleStatus"
-                    style="@style/Widget.CallBridge.Value"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/status_inactive" />
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_network_lan"
+                        app:tint="@color/brand_text_muted" />
+                </LinearLayout>
 
-                <TextView
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/label_wss_endpoint" />
                 <TextView
                     android:id="@+id/tvWssEndpoint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:ellipsize="end"
                     android:fontFamily="@font/jetbrains_mono"
+                    android:maxLines="2"
                     android:text="—"
                     android:textColor="@color/brand_text_primary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
 
                 <TextView
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/label_nsd_status" />
-                <TextView
                     android:id="@+id/tvNsdStatus"
-                    style="@style/Widget.CallBridge.Value"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/status_inactive" />
-
-                <TextView
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/label_sync_status" />
-                <TextView
-                    android:id="@+id/tvSyncStatus"
-                    style="@style/Widget.CallBridge.Value"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="IDLE" />
-
-                <TextView
-                    style="@style/Widget.CallBridge.Label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/label_sim_count" />
-                <TextView
-                    android:id="@+id/tvSimSummary"
-                    style="@style/Widget.CallBridge.Value"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="0" />
+                    android:layout_marginTop="4dp"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:text="@string/status_inactive"
+                    android:textColor="@color/brand_text_secondary"
+                    android:textSize="11sp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
-        <!-- Permissions & Play Creator Compliance Checklist -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.CallBridge.Card"
+        <!-- 2-Column Minimalist Bento Grid: Row 2 (SIMs + Sync) -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
+            android:layout_marginTop="12dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
 
+            <!-- Tile: Active SIMs -->
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_soft_tile"
                 android:orientation="vertical"
                 android:padding="16dp">
 
                 <TextView
-                    style="@style/Widget.CallBridge.SectionTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/section_permissions" />
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/label_sim_count"
+                    style="@style/Widget.CallBridge.MicroLabel" />
 
-                <!-- Bluetooth -->
-                <LinearLayout
+                <TextView
+                    android:id="@+id/tvSimSummary"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
-                            style="@style/Widget.CallBridge.Value"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/perm_bluetooth" />
-                        <TextView
-                            android:id="@+id/tvPermBluetooth"
-                            style="@style/Widget.CallBridge.Label"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/status_denied" />
-                    </LinearLayout>
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGrantBluetooth"
-                        style="@style/Widget.CallBridge.ActionButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="48dp"
-                        android:text="@string/action_grant" />
-                </LinearLayout>
+                    android:text="0"
+                    style="@style/Widget.CallBridge.TileValue"
+                    android:textSize="22sp" />
+            </LinearLayout>
 
-                <!-- Phone State -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
-                            style="@style/Widget.CallBridge.Value"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/perm_phone_state" />
-                        <TextView
-                            android:id="@+id/tvPermPhoneState"
-                            style="@style/Widget.CallBridge.Label"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/status_denied" />
-                    </LinearLayout>
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGrantPhoneState"
-                        style="@style/Widget.CallBridge.ActionButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="48dp"
-                        android:text="@string/action_grant" />
-                </LinearLayout>
+            <!-- Tile: Sync Status -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_soft_tile"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-                <!-- Contacts -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
-                            style="@style/Widget.CallBridge.Value"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/perm_contacts" />
-                        <TextView
-                            android:id="@+id/tvPermContacts"
-                            style="@style/Widget.CallBridge.Label"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/status_denied" />
-                    </LinearLayout>
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGrantContacts"
-                        style="@style/Widget.CallBridge.ActionButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="48dp"
-                        android:text="@string/action_grant" />
-                </LinearLayout>
-
-                <!-- Notifications -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
-                            style="@style/Widget.CallBridge.Value"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/perm_notifications" />
-                        <TextView
-                            android:id="@+id/tvPermNotifications"
-                            style="@style/Widget.CallBridge.Label"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/status_denied" />
-                    </LinearLayout>
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGrantNotifications"
-                        style="@style/Widget.CallBridge.ActionButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="48dp"
-                        android:text="@string/action_grant" />
-                </LinearLayout>
-
-                <!-- Microphone -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
-                            style="@style/Widget.CallBridge.Value"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/perm_microphone" />
-                        <TextView
-                            android:id="@+id/tvPermMicrophone"
-                            style="@style/Widget.CallBridge.Label"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/status_denied" />
-                    </LinearLayout>
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGrantMicrophone"
-                        style="@style/Widget.CallBridge.ActionButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="48dp"
-                        android:text="@string/action_grant" />
-                </LinearLayout>
-
-                <!-- CALL_PHONE -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
-                            style="@style/Widget.CallBridge.Value"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/perm_call_phone" />
-                        <TextView
-                            android:id="@+id/tvPermCallPhone"
-                            style="@style/Widget.CallBridge.Label"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/status_denied" />
-                    </LinearLayout>
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGrantCallPhone"
-                        style="@style/Widget.CallBridge.ActionButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="48dp"
-                        android:text="@string/action_grant" />
-                </LinearLayout>
-
-                <!-- Default Dialer Role -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
-                            style="@style/Widget.CallBridge.Value"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/perm_default_dialer" />
-                        <TextView
-                            android:id="@+id/tvPermDialerRole"
-                            style="@style/Widget.CallBridge.Label"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/status_denied" />
-                    </LinearLayout>
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGrantDialerRole"
-                        style="@style/Widget.CallBridge.ActionButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="48dp"
-                        android:text="@string/action_configure" />
-                </LinearLayout>
-
-                <!-- Battery Optimization -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
-                            style="@style/Widget.CallBridge.Value"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/perm_battery" />
-                        <TextView
-                            android:id="@+id/tvPermBattery"
-                            style="@style/Widget.CallBridge.Label"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/status_denied" />
-                    </LinearLayout>
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnGrantBattery"
-                        style="@style/Widget.CallBridge.ActionButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="48dp"
-                        android:text="@string/action_configure" />
-                </LinearLayout>
-
-                <!-- Play Creator Compliance Summary Row -->
                 <TextView
-                    android:id="@+id/tvCreatorComplianceBanner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/label_sync_status"
+                    style="@style/Widget.CallBridge.MicroLabel" />
+
+                <TextView
+                    android:id="@+id/tvSyncStatus"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:background="@color/status_ok_bg"
-                    android:padding="10dp"
-                    android:text="@string/status_creator_safe"
-                    android:textColor="@color/status_ok"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:text="IDLE"
+                    android:textColor="@color/brand_text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Readiness Progress Bar Tile (Inspired by Reference EMERGENCY FUND Card) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_soft_tile"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/section_permissions"
+                    style="@style/Widget.CallBridge.MicroLabel" />
+
+                <TextView
+                    android:id="@+id/tvReadinessPercent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0%"
+                    android:textColor="@color/brand_primary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+
+            <ProgressBar
+                android:id="@+id/pbReadiness"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="12dp"
+                android:layout_marginTop="12dp"
+                android:max="100"
+                android:progress="25"
+                android:progressDrawable="@drawable/bg_progress_cobalt" />
+
+            <TextView
+                android:id="@+id/tvReadinessDetail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/status_creator_safe"
+                android:textColor="@color/brand_text_secondary"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Minimalist Permissions Checklist Tile -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_soft_tile"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp">
+
+            <!-- Bluetooth -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="48dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingVertical="6dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/perm_bluetooth"
+                        style="@style/Widget.CallBridge.Value" />
+
+                    <TextView
+                        android:id="@+id/tvPermBluetooth"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGrantBluetooth"
+                    style="@style/Widget.CallBridge.PermGrantPill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="@string/action_grant" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/brand_card_stroke" />
+
+            <!-- Phone State -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="48dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingVertical="6dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/perm_phone_state"
+                        style="@style/Widget.CallBridge.Value" />
+
+                    <TextView
+                        android:id="@+id/tvPermPhoneState"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGrantPhoneState"
+                    style="@style/Widget.CallBridge.PermGrantPill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="@string/action_grant" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/brand_card_stroke" />
+
+            <!-- Contacts -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="48dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingVertical="6dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/perm_contacts"
+                        style="@style/Widget.CallBridge.Value" />
+
+                    <TextView
+                        android:id="@+id/tvPermContacts"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGrantContacts"
+                    style="@style/Widget.CallBridge.PermGrantPill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="@string/action_grant" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/brand_card_stroke" />
+
+            <!-- Notifications -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="48dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingVertical="6dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/perm_notifications"
+                        style="@style/Widget.CallBridge.Value" />
+
+                    <TextView
+                        android:id="@+id/tvPermNotifications"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGrantNotifications"
+                    style="@style/Widget.CallBridge.PermGrantPill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="@string/action_grant" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/brand_card_stroke" />
+
+            <!-- Microphone -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="48dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingVertical="6dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/perm_microphone"
+                        style="@style/Widget.CallBridge.Value" />
+
+                    <TextView
+                        android:id="@+id/tvPermMicrophone"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGrantMicrophone"
+                    style="@style/Widget.CallBridge.PermGrantPill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="@string/action_grant" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/brand_card_stroke" />
+
+            <!-- Call Phone -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="48dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingVertical="6dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/perm_call_phone"
+                        style="@style/Widget.CallBridge.Value" />
+
+                    <TextView
+                        android:id="@+id/tvPermCallPhone"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGrantCallPhone"
+                    style="@style/Widget.CallBridge.PermGrantPill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="@string/action_grant" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/brand_card_stroke" />
+
+            <!-- Default Dialer Role -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="48dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingVertical="6dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/perm_default_dialer"
+                        style="@style/Widget.CallBridge.Value" />
+
+                    <TextView
+                        android:id="@+id/tvPermDialerRole"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGrantDialerRole"
+                    style="@style/Widget.CallBridge.PermGrantPill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="@string/action_configure" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/brand_card_stroke" />
+
+            <!-- Battery -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="48dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingVertical="6dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/perm_battery"
+                        style="@style/Widget.CallBridge.Value" />
+
+                    <TextView
+                        android:id="@+id/tvPermBattery"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnGrantBattery"
+                    style="@style/Widget.CallBridge.PermGrantPill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="@string/action_open_settings" />
+            </LinearLayout>
+        </LinearLayout>
+
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

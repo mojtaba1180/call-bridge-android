@@ -2,13 +2,21 @@ package com.example.callbridge.security
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
 import com.example.callbridge.core.AppConfig
 import com.example.callbridge.core.Logger
+import com.example.callbridge.database.dao.PairedDeviceDao
+import com.example.callbridge.database.entities.PairedDeviceEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.UUID
 
 data class PairedDevice(
     val deviceId: String,
@@ -28,24 +36,32 @@ data class PendingPairingRequest(
 
 sealed class PairingState {
     data object Idle : PairingState()
-    data class PairingWindowOpen(val pinCode: String, val expiresAtMs: Long) : PairingState()
+    data class PairingWindowOpen(
+        val pinCode: String,
+        val qrPayload: PairingQrPayload,
+        val expiresAtMs: Long
+    ) : PairingState()
     data class AwaitingUserApproval(val request: PendingPairingRequest) : PairingState()
     data class Paired(val device: PairedDevice) : PairingState()
 }
 
 /**
- * Application-level pairing handshake manager requiring explicit user approval on Android
- * before trusting a remote iPhone for sensitive telephony commands.
- *
- * Uses cryptographically secure random PINs and SHA-256 secret derivation stored in
- * MODE_PRIVATE SharedPreferences (no custom cryptographic algorithms).
+ * Manages explicit user-initiated QR & PIN pairing, Android device identity,
+ * certificate fingerprint pinning metadata, Room persistence, and revocation.
  */
-class PairingManager(context: Context) {
-
+class PairingManager(
+    context: Context,
+    private val keyStoreManager: KeyStoreManager? = null,
+    private val pairedDeviceDao: PairedDeviceDao? = null
+) {
     private val prefs: SharedPreferences =
         context.applicationContext.getSharedPreferences(AppConfig.PREFS_NAME, Context.MODE_PRIVATE)
     private val secureRandom = SecureRandom()
     private val lock = Any()
+    private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    val localDeviceId: String = loadOrCreateLocalDeviceId()
+    val localDeviceName: String = "${Build.MANUFACTURER} ${Build.MODEL}".trim().ifBlank { "BridgeLink Android" }
 
     private val _pairedDevice = MutableStateFlow<PairedDevice?>(loadPairedDevice())
     val pairedDevice: StateFlow<PairedDevice?> = _pairedDevice.asStateFlow()
@@ -56,58 +72,93 @@ class PairingManager(context: Context) {
     val pairingState: StateFlow<PairingState> = _pairingState.asStateFlow()
 
     private var activePairingPin: String? = null
+    private var activePairingToken: String? = null
     private var activePairingWindowExpiry: Long = 0L
     private var pendingRequest: PendingPairingRequest? = null
 
     /**
-     * Opens a temporary 60-second pairing window initiated explicitly by the Android user
-     * and generates a 6-digit numeric PIN for out-of-band verification on the iPhone.
+     * Generates a fresh one-time QR payload + 6-digit verification PIN expiring in 120 seconds.
      */
-    fun openPairingWindow(): String = synchronized(lock) {
-        val codeInt = secureRandom.nextInt(1_000_000)
-        val pin = String.format("%06d", codeInt)
+    fun openPairingWindow(currentLocalIp: String? = null): PairingQrPayload = synchronized(lock) {
+        val pin = String.format("%06d", secureRandom.nextInt(1_000_000))
+        val tokenBytes = ByteArray(16).also { secureRandom.nextBytes(it) }
+        val token = tokenBytes.toHexString()
         val now = System.currentTimeMillis()
-        val expiresAt = now + AppConfig.PAIRING_REQUEST_TIMEOUT_MS
+        val expiresAt = now + AppConfig.PAIRING_QR_TTL_MS
+        val certSha = keyStoreManager?.getServerCertificateFingerprint() ?: "UNINITIALIZED"
+
+        val payload = PairingQrPayload(
+            deviceId = localDeviceId,
+            deviceName = localDeviceName,
+            token = token,
+            pinCode = pin,
+            certSha256 = certSha,
+            wssHost = currentLocalIp,
+            wssPort = AppConfig.DEFAULT_WSS_PORT,
+            expiresAtMs = expiresAt
+        )
+
         activePairingPin = pin
+        activePairingToken = token
         activePairingWindowExpiry = expiresAt
         pendingRequest = null
-        _pairingState.value = PairingState.PairingWindowOpen(pin, expiresAt)
-        Logger.i("Security", "Pairing window opened (60s) awaiting iPhone handshake")
-        pin
+        _pairingState.value = PairingState.PairingWindowOpen(pin, payload, expiresAt)
+        Logger.i("Security", "One-time QR pairing window opened (120s)")
+        payload
     }
 
     fun closePairingWindow() = synchronized(lock) {
         activePairingPin = null
+        activePairingToken = null
         activePairingWindowExpiry = 0L
         pendingRequest = null
         _pairingState.value = _pairedDevice.value?.let { PairingState.Paired(it) } ?: PairingState.Idle
     }
 
     /**
-     * Called when a BLE client sends PAIR_REQUEST. Requires an open pairing window or
-     * creates a pending approval prompt that the Android user must explicitly confirm.
+     * Validates an incoming PAIR_REQUEST (with optional one-time QR token) and requires explicit
+     * user confirmation on Android before trusting the remote iPhone.
      */
     fun registerIncomingPairRequest(
         deviceId: String,
         deviceName: String?,
-        bleAddress: String?
-    ): PendingPairingRequest = synchronized(lock) {
+        bleAddress: String?,
+        suppliedToken: String? = null
+    ): PendingPairingRequest? = synchronized(lock) {
         val now = System.currentTimeMillis()
+        val expectedToken = activePairingToken
+        if (expectedToken != null && !suppliedToken.isNullOrBlank()) {
+            if (now > activePairingWindowExpiry) {
+                closePairingWindow()
+                Logger.w("Security", "Rejected expired QR pairing token")
+                return null
+            }
+            val tokenMatch = MessageDigest.isEqual(
+                expectedToken.toByteArray(Charsets.UTF_8),
+                suppliedToken.trim().toByteArray(Charsets.UTF_8)
+            )
+            if (!tokenMatch) {
+                Logger.w("Security", "Rejected mismatched QR pairing token")
+                return null
+            }
+        }
+
         val pin = if (activePairingPin != null && now < activePairingWindowExpiry) {
             activePairingPin!!
         } else {
             String.format("%06d", secureRandom.nextInt(1_000_000)).also {
                 activePairingPin = it
-                activePairingWindowExpiry = now + AppConfig.PAIRING_REQUEST_TIMEOUT_MS
+                activePairingWindowExpiry = now + AppConfig.PAIRING_QR_TTL_MS
             }
         }
+
         val request = PendingPairingRequest(
             deviceId = deviceId,
             deviceName = deviceName?.takeIf { it.isNotBlank() } ?: "iPhone",
             bleAddress = bleAddress,
             pinCode = pin,
             createdAtMs = now,
-            expiresAtMs = now + AppConfig.PAIRING_REQUEST_TIMEOUT_MS
+            expiresAtMs = now + AppConfig.PAIRING_QR_TTL_MS
         )
         pendingRequest = request
         _pairingState.value = PairingState.AwaitingUserApproval(request)
@@ -115,9 +166,39 @@ class PairingManager(context: Context) {
         request
     }
 
-    /**
-     * Explicitly approves the pending pairing request after user confirmation in UI.
-     */
+    fun verifyPinForPairing(
+        deviceId: String,
+        deviceName: String?,
+        bleAddress: String?,
+        suppliedPin: String
+    ): Boolean = synchronized(lock) {
+        val expectedPin = activePairingPin ?: return false
+        if (System.currentTimeMillis() > activePairingWindowExpiry) {
+            closePairingWindow()
+            return false
+        }
+        val matches = MessageDigest.isEqual(
+            expectedPin.toByteArray(Charsets.UTF_8),
+            suppliedPin.trim().toByteArray(Charsets.UTF_8)
+        )
+        if (!matches) {
+            Logger.w("Security", "Rejected PAIR_VERIFY with mismatched PIN")
+            return false
+        }
+        val request = PendingPairingRequest(
+            deviceId = deviceId,
+            deviceName = deviceName?.takeIf { it.isNotBlank() } ?: "iPhone",
+            bleAddress = bleAddress,
+            pinCode = expectedPin,
+            createdAtMs = System.currentTimeMillis(),
+            expiresAtMs = activePairingWindowExpiry
+        )
+        pendingRequest = request
+        _pairingState.value = PairingState.AwaitingUserApproval(request)
+        Logger.i("Security", "PIN verified for ${request.deviceName}; awaiting explicit Android user approval")
+        true
+    }
+
     fun approvePendingPairing(): PairedDevice? = synchronized(lock) {
         val req = pendingRequest ?: return null
         if (System.currentTimeMillis() > req.expiresAtMs) {
@@ -128,67 +209,36 @@ class PairingManager(context: Context) {
         }
 
         val secretBytes = ByteArray(32).also { secureRandom.nextBytes(it) }
-        val secretHex = secretBytes.toHexString()
+        val secretHash = sha256Hex(secretBytes.toHexString())
+        val now = System.currentTimeMillis()
         val paired = PairedDevice(
             deviceId = req.deviceId,
             deviceName = req.deviceName,
-            pairedAtMs = System.currentTimeMillis(),
+            pairedAtMs = now,
             bleAddress = req.bleAddress
         )
-        savePairedDevice(paired, secretHex)
+        savePairedDevice(paired, secretHash)
         pendingRequest = null
         activePairingPin = null
+        activePairingToken = null
         activePairingWindowExpiry = 0L
         _pairedDevice.value = paired
         _pairingState.value = PairingState.Paired(paired)
-        Logger.i("Security", "User approved pairing for ${paired.deviceName}")
+        Logger.i("Security", "Pairing successful with ${paired.deviceName}")
         paired
     }
-
-    /**
-     * Verifies a PAIR_VERIFY command containing the user-displayed PIN code.
-     * Succeeds only when the pairing window is open and PIN matches in constant time.
-     */
-    fun verifyPinForPairing(deviceId: String, deviceName: String?, bleAddress: String?, suppliedPin: String): Boolean =
-        synchronized(lock) {
-            val expectedPin = activePairingPin ?: return false
-            if (System.currentTimeMillis() > activePairingWindowExpiry) {
-                closePairingWindow()
-                return false
-            }
-            val matches = MessageDigest.isEqual(
-                expectedPin.toByteArray(Charsets.UTF_8),
-                suppliedPin.trim().toByteArray(Charsets.UTF_8)
-            )
-            if (!matches) {
-                Logger.w("Security", "Rejected PAIR_VERIFY with mismatched PIN")
-                return false
-            }
-
-            // Still require explicit user approval if pendingRequest was not already approved
-            val request = PendingPairingRequest(
-                deviceId = deviceId,
-                deviceName = deviceName?.takeIf { it.isNotBlank() } ?: "iPhone",
-                bleAddress = bleAddress,
-                pinCode = expectedPin,
-                createdAtMs = System.currentTimeMillis(),
-                expiresAtMs = activePairingWindowExpiry
-            )
-            pendingRequest = request
-            _pairingState.value = PairingState.AwaitingUserApproval(request)
-            Logger.i("Security", "PIN verified for ${request.deviceName}; awaiting final Android user approval")
-            true
-        }
 
     fun rejectPendingPairing() = synchronized(lock) {
         pendingRequest = null
         activePairingPin = null
+        activePairingToken = null
         activePairingWindowExpiry = 0L
         _pairingState.value = _pairedDevice.value?.let { PairingState.Paired(it) } ?: PairingState.Idle
-        Logger.i("Security", "User rejected incoming pairing request")
+        Logger.i("Security", "User rejected pairing request")
     }
 
     fun unpair() = synchronized(lock) {
+        val oldId = _pairedDevice.value?.deviceId
         prefs.edit()
             .remove(KEY_DEVICE_ID)
             .remove(KEY_DEVICE_NAME)
@@ -196,12 +246,18 @@ class PairingManager(context: Context) {
             .remove(KEY_BLE_ADDRESS)
             .remove(KEY_SHARED_SECRET_HASH)
             .apply()
+        if (oldId != null && pairedDeviceDao != null) {
+            persistenceScope.launch {
+                runCatching { pairedDeviceDao.markRevoked(oldId) }
+            }
+        }
         pendingRequest = null
         activePairingPin = null
+        activePairingToken = null
         activePairingWindowExpiry = 0L
         _pairedDevice.value = null
         _pairingState.value = PairingState.Idle
-        Logger.i("Security", "Paired iPhone cleared")
+        Logger.i("Security", "Pairing revoked and cleared")
     }
 
     fun isDevicePaired(deviceId: String?): Boolean {
@@ -215,15 +271,33 @@ class PairingManager(context: Context) {
 
     internal fun getStoredSharedSecretHash(): String? = prefs.getString(KEY_SHARED_SECRET_HASH, null)
 
-    private fun savePairedDevice(device: PairedDevice, rawSecretHex: String) {
-        val hash = sha256Hex(rawSecretHex)
+    private fun savePairedDevice(device: PairedDevice, secretHash: String) {
         prefs.edit()
             .putString(KEY_DEVICE_ID, device.deviceId)
             .putString(KEY_DEVICE_NAME, device.deviceName)
             .putLong(KEY_PAIRED_AT, device.pairedAtMs)
             .putString(KEY_BLE_ADDRESS, device.bleAddress)
-            .putString(KEY_SHARED_SECRET_HASH, hash)
+            .putString(KEY_SHARED_SECRET_HASH, secretHash)
             .apply()
+
+        val dao = pairedDeviceDao ?: return
+        val fp = keyStoreManager?.getServerCertificateFingerprint() ?: ""
+        persistenceScope.launch {
+            runCatching {
+                dao.upsert(
+                    PairedDeviceEntity(
+                        deviceId = device.deviceId,
+                        deviceName = device.deviceName,
+                        bleAddress = device.bleAddress,
+                        sharedSecretHash = secretHash,
+                        certFingerprint = fp,
+                        pairedAtMs = device.pairedAtMs,
+                        lastSeenAtMs = device.pairedAtMs,
+                        revoked = false
+                    )
+                )
+            }
+        }
     }
 
     private fun loadPairedDevice(): PairedDevice? {
@@ -234,7 +308,16 @@ class PairingManager(context: Context) {
         return PairedDevice(id, name, pairedAt, bleAddress)
     }
 
+    private fun loadOrCreateLocalDeviceId(): String {
+        val existing = prefs.getString(KEY_LOCAL_DEVICE_ID, null)
+        if (!existing.isNullOrBlank()) return existing
+        val created = "android-${UUID.randomUUID().toString().take(12)}"
+        prefs.edit().putString(KEY_LOCAL_DEVICE_ID, created).apply()
+        return created
+    }
+
     companion object {
+        private const val KEY_LOCAL_DEVICE_ID = "local_android_device_id"
         private const val KEY_DEVICE_ID = "paired_device_id"
         private const val KEY_DEVICE_NAME = "paired_device_name"
         private const val KEY_PAIRED_AT = "paired_at_ms"

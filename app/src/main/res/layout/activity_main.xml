@@ -1,709 +1,127 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/rootScrollView"
+    android:id="@+id/rootContainer"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/brand_surface_bg"
-    android:clipToPadding="false"
-    android:fillViewport="true">
+    android:orientation="vertical">
 
+    <!-- Compact Hero Header Bar -->
     <LinearLayout
-        android:id="@+id/contentContainer"
+        android:id="@+id/topHeaderBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingBottom="24dp">
+        android:background="@drawable/bg_hero_header"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp">
 
-        <!-- Hero Header Banner -->
+        <ImageView
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/ic_callbridge_icon" />
+
         <LinearLayout
-            android:id="@+id/heroHeader"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_hero_header"
-            android:orientation="vertical"
-            android:paddingHorizontal="20dp"
-            android:paddingTop="16dp"
-            android:paddingBottom="20dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tvHeaderTitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/dashboard_title"
-                        android:textColor="@color/brand_text_on_dark"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvHeaderSubtitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/dashboard_subtitle"
-                        android:textColor="@color/brand_text_on_dark_muted"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnToggleLanguage"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="48dp"
-                    android:minWidth="56dp"
-                    android:text="@string/btn_switch_language"
-                    android:textColor="@color/brand_text_on_dark"
-                    app:cornerRadius="12dp"
-                    app:strokeColor="#4DFFFFFF" />
-            </LinearLayout>
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
             <TextView
-                android:id="@+id/tvDeviceApiBadge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:background="#26FFFFFF"
-                android:fontFamily="@font/jetbrains_mono"
-                android:paddingHorizontal="10dp"
-                android:paddingVertical="4dp"
-                android:textColor="#E2E8F0"
+                android:text="@string/app_name"
+                android:textColor="@color/brand_text_on_dark"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvHeaderServiceBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/service_stopped"
+                android:textColor="@color/brand_text_on_dark_muted"
                 android:textSize="11sp" />
-
         </LinearLayout>
 
-        <!-- Main Column with comfortable horizontal margin -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingTop="16dp">
-
-            <!-- H. Service Controls (Primary Actions) -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.CallBridge.Card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        style="@style/Widget.CallBridge.SectionTitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/section_controls" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnStartBridge"
-                            android:layout_width="0dp"
-                            android:layout_height="48dp"
-                            android:layout_marginEnd="6dp"
-                            android:layout_weight="1"
-                            android:text="@string/action_start_bridge"
-                            app:cornerRadius="12dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnStopBridge"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="48dp"
-                            android:layout_marginStart="6dp"
-                            android:layout_weight="1"
-                            android:text="@string/action_stop_bridge"
-                            app:cornerRadius="12dp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnPairIphone"
-                            style="@style/Widget.CallBridge.ActionButton"
-                            android:layout_width="0dp"
-                            android:layout_height="48dp"
-                            android:layout_marginEnd="6dp"
-                            android:layout_weight="1"
-                            android:text="@string/action_pair_iphone" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnTestBle"
-                            style="@style/Widget.CallBridge.ActionButton"
-                            android:layout_width="0dp"
-                            android:layout_height="48dp"
-                            android:layout_marginStart="6dp"
-                            android:layout_weight="1"
-                            android:text="@string/action_test_ble" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnTestNetwork"
-                            style="@style/Widget.CallBridge.ActionButton"
-                            android:layout_width="0dp"
-                            android:layout_height="48dp"
-                            android:layout_marginEnd="6dp"
-                            android:layout_weight="1"
-                            android:text="@string/action_test_network" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnTestMicrophone"
-                            style="@style/Widget.CallBridge.ActionButton"
-                            android:layout_width="0dp"
-                            android:layout_height="48dp"
-                            android:layout_marginStart="6dp"
-                            android:layout_weight="1"
-                            android:text="@string/action_test_mic" />
-                    </LinearLayout>
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- A. Application Status -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.CallBridge.Card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        style="@style/Widget.CallBridge.SectionTitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/section_app_status" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_service_status" />
-                        <TextView android:id="@+id/tvAppServiceStatus" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_ble_status" />
-                        <TextView android:id="@+id/tvAppBleStatus" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_iphone_connection" />
-                        <TextView android:id="@+id/tvAppIphoneStatus" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_call_state" />
-                        <TextView android:id="@+id/tvAppCallState" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_network_status" />
-                        <TextView android:id="@+id/tvAppNetworkStatus" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_audio_capability" />
-                        <TextView android:id="@+id/tvAppAudioCapability" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/jetbrains_mono" android:textSize="11sp" />
-                    </LinearLayout>
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- B. Permission Checklist -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.CallBridge.Card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@string/cd_section_icon"
-                            android:src="@drawable/ic_shield_check" />
-                        <TextView
-                            style="@style/Widget.CallBridge.SectionTitle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:text="@string/section_permissions" />
-                    </LinearLayout>
-
-                    <!-- Row: Bluetooth -->
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:gravity="center_vertical" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/perm_bluetooth" />
-                        <com.google.android.material.button.MaterialButton android:id="@+id/btnPermBluetooth" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="wrap_content" android:layout_height="48dp" android:text="@string/btn_grant" />
-                    </LinearLayout>
-
-                    <!-- Row: Phone State -->
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:gravity="center_vertical" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/perm_phone_state" />
-                        <com.google.android.material.button.MaterialButton android:id="@+id/btnPermPhoneState" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="wrap_content" android:layout_height="48dp" android:text="@string/btn_grant" />
-                    </LinearLayout>
-
-                    <!-- Row: Notifications -->
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:gravity="center_vertical" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/perm_notifications" />
-                        <com.google.android.material.button.MaterialButton android:id="@+id/btnPermNotifications" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="wrap_content" android:layout_height="48dp" android:text="@string/btn_grant" />
-                    </LinearLayout>
-
-                    <!-- Row: Microphone -->
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:gravity="center_vertical" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/perm_microphone" />
-                        <com.google.android.material.button.MaterialButton android:id="@+id/btnPermMicrophone" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="wrap_content" android:layout_height="48dp" android:text="@string/btn_grant" />
-                    </LinearLayout>
-
-                    <!-- Row: Call Phone -->
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:gravity="center_vertical" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/perm_call_phone" />
-                        <com.google.android.material.button.MaterialButton android:id="@+id/btnPermCallPhone" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="wrap_content" android:layout_height="48dp" android:text="@string/btn_grant" />
-                    </LinearLayout>
-
-                    <!-- Row: Default Dialer Role -->
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:gravity="center_vertical" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/perm_default_dialer" />
-                        <com.google.android.material.button.MaterialButton android:id="@+id/btnPermDefaultDialer" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="wrap_content" android:layout_height="48dp" android:text="@string/btn_configure" />
-                    </LinearLayout>
-
-                    <!-- Row: Battery Optimization -->
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:gravity="center_vertical" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/perm_battery_opt" />
-                        <com.google.android.material.button.MaterialButton android:id="@+id/btnPermBattery" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="wrap_content" android:layout_height="48dp" android:text="@string/btn_configure" />
-                    </LinearLayout>
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- C. BLE Status -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.CallBridge.Card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@string/cd_section_icon"
-                            android:src="@drawable/ic_bluetooth_bridge" />
-                        <TextView
-                            style="@style/Widget.CallBridge.SectionTitle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:text="@string/section_ble" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_bt_enabled" />
-                        <TextView android:id="@+id/tvBleAdapterEnabled" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_ble_peripheral" />
-                        <TextView android:id="@+id/tvBlePeripheralSupport" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_ble_advertising" />
-                        <TextView android:id="@+id/tvBleAdvertising" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_gatt_server" />
-                        <TextView android:id="@+id/tvBleGattServer" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_ble_client" />
-                        <TextView android:id="@+id/tvBleClient" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_ble_mtu" />
-                        <TextView android:id="@+id/tvBleMtuAuth" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/jetbrains_mono" android:textSize="12sp" />
-                    </LinearLayout>
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- D. Network Status -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.CallBridge.Card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@string/cd_section_icon"
-                            android:src="@drawable/ic_network_lan" />
-                        <TextView
-                            style="@style/Widget.CallBridge.SectionTitle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:text="@string/section_network" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_active_network" />
-                        <TextView android:id="@+id/tvNetTransport" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_local_ip" />
-                        <TextView android:id="@+id/tvNetIp" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/jetbrains_mono" android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_server_port" />
-                        <TextView android:id="@+id/tvNetPorts" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/jetbrains_mono" android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_server_status" />
-                        <TextView android:id="@+id/tvNetServerState" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_connected_client" />
-                        <TextView android:id="@+id/tvNetClient" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/jetbrains_mono" android:textSize="12sp" />
-                    </LinearLayout>
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- E. Call Status -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.CallBridge.Card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@string/cd_section_icon"
-                            android:src="@drawable/ic_phone_call" />
-                        <TextView
-                            style="@style/Widget.CallBridge.SectionTitle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:text="@string/section_call" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_call_state" />
-                        <TextView android:id="@+id/tvCallDetailState" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_call_direction" />
-                        <TextView android:id="@+id/tvCallDirection" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_caller_number" />
-                        <TextView android:id="@+id/tvCallerNumber" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/jetbrains_mono" android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tvCallControlCapability"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:background="@color/status_neutral_bg"
-                        android:padding="10dp"
-                        android:textColor="@color/brand_text_primary"
-                        android:textSize="12sp" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnAnswerCall"
-                            style="@style/Widget.CallBridge.ActionButton"
-                            android:layout_width="0dp"
-                            android:layout_height="48dp"
-                            android:layout_marginEnd="4dp"
-                            android:layout_weight="1"
-                            android:text="@string/btn_answer_call" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnRejectCall"
-                            style="@style/Widget.CallBridge.ActionButton"
-                            android:layout_width="0dp"
-                            android:layout_height="48dp"
-                            android:layout_marginHorizontal="4dp"
-                            android:layout_weight="1"
-                            android:text="@string/btn_reject_call" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnEndCall"
-                            style="@style/Widget.CallBridge.ActionButton"
-                            android:layout_width="0dp"
-                            android:layout_height="48dp"
-                            android:layout_marginStart="4dp"
-                            android:layout_weight="1"
-                            android:text="@string/btn_end_call" />
-                    </LinearLayout>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnTestDial"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/action_test_dial"
-                        app:cornerRadius="12dp" />
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- F. Audio Status -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.CallBridge.Card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@string/cd_section_icon"
-                            android:src="@drawable/ic_mic_audio" />
-                        <TextView
-                            style="@style/Widget.CallBridge.SectionTitle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:text="@string/section_audio" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_audio_mic_perm" />
-                        <TextView android:id="@+id/tvAudioMicPerm" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_audio_record" />
-                        <TextView android:id="@+id/tvAudioRecord" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_audio_track" />
-                        <TextView android:id="@+id/tvAudioTrack" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_audio_effects" />
-                        <TextView android:id="@+id/tvAudioEffects" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/jetbrains_mono" android:textSize="11sp" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_cellular_audio_cap" />
-                        <TextView android:id="@+id/tvCellularAudioCap" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/jetbrains_mono" android:textSize="11sp" />
-                    </LinearLayout>
-
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal">
-                        <TextView style="@style/Widget.CallBridge.Label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/label_audio_metrics" />
-                        <TextView android:id="@+id/tvAudioMetrics" style="@style/Widget.CallBridge.Value" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/jetbrains_mono" android:textSize="11sp" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tvAudioHonestyBanner"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:background="@color/status_warn_bg"
-                        android:padding="10dp"
-                        android:text="@string/audio_honesty_notice"
-                        android:textColor="@color/status_warn"
-                        android:textSize="12sp" />
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- G. Live Event Log -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.CallBridge.Card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="@string/cd_section_icon"
-                            android:src="@drawable/ic_terminal_log" />
-
-                        <TextView
-                            style="@style/Widget.CallBridge.SectionTitle"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:layout_weight="1"
-                            android:text="@string/section_logs" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnClearLogs"
-                            style="@style/Widget.Material3.Button.TextButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="48dp"
-                            android:text="@string/action_clear_logs" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tvEmptyLogs"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:padding="16dp"
-                        android:text="@string/msg_empty_logs"
-                        android:textColor="@color/brand_text_secondary"
-                        android:visibility="gone" />
-
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/rvEventLogs"
-                        android:layout_width="match_parent"
-                        android:layout_height="220dp"
-                        android:layout_marginTop="8dp"
-                        android:background="@color/log_terminal_bg"
-                        android:clipToPadding="false"
-                        android:nestedScrollingEnabled="true"
-                        android:paddingVertical="6dp" />
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-        </LinearLayout>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOpenDiagnostics"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginEnd="6dp"
+            android:minWidth="48dp"
+            android:paddingHorizontal="10dp"
+            android:text="@string/nav_diagnostics"
+            android:textColor="@color/brand_text_on_dark"
+            android:textSize="12sp"
+            app:icon="@drawable/ic_terminal_log"
+            app:iconSize="16dp"
+            app:iconTint="@color/brand_text_on_dark"
+            app:strokeColor="#33FFFFFF" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnToggleLanguage"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:minWidth="48dp"
+            android:paddingHorizontal="10dp"
+            android:text="@string/action_switch_language"
+            android:textColor="@color/brand_text_on_dark"
+            android:textSize="12sp"
+            app:strokeColor="#33FFFFFF" />
     </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+
+    <!-- 6-Screen Content Switcher -->
+    <FrameLayout
+        android:id="@+id/contentHost"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <include
+            android:id="@+id/tabDashboard"
+            layout="@layout/layout_tab_dashboard"
+            android:visibility="visible" />
+
+        <include
+            android:id="@+id/tabMessages"
+            layout="@layout/layout_tab_messages"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/tabContacts"
+            layout="@layout/layout_tab_contacts"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/tabCalls"
+            layout="@layout/layout_tab_calls"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/tabPairing"
+            layout="@layout/layout_tab_pairing"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/tabDiagnostics"
+            layout="@layout/layout_tab_diagnostics"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <!-- Bottom Navigation -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/brand_card_bg"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/menu_bottom_nav" />
+</LinearLayout>

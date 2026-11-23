@@ -1,154 +1,152 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">CallBridge</string>
-    <string name="dashboard_title">Cellular to iPhone Call Bridge</string>
-    <string name="dashboard_subtitle">Android Companion • BLE GATT &amp; Local LAN</string>
-    <string name="btn_switch_language">فا</string>
+    <string name="app_name">BridgeLink</string>
+    <string name="app_subtitle">Android SIM Companion for iPhone</string>
+    <string name="action_switch_language">فا</string>
+    <string name="action_open_diagnostics">Diagnostics</string>
 
-    <!-- Notifications -->
-    <string name="notif_channel_name">CallBridge Foreground Service</string>
-    <string name="notif_channel_description">Persistent status for BLE signaling, telephony monitoring, and local network server</string>
-    <string name="notif_connected">iPhone Connected – Bridge Active</string>
-    <string name="notif_waiting">Waiting for iPhone Connection</string>
-    <string name="notif_incoming_call">Incoming call: %1$s</string>
-    <string name="notif_active_call">Call in progress</string>
-    <string name="notif_audio_unavailable">Cellular audio bridge unavailable on this device</string>
-    <string name="notif_bridge_running_subtext">CallBridge signaling service is active</string>
+    <!-- Navigation -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_messages">Messages</string>
+    <string name="nav_contacts">Contacts</string>
+    <string name="nav_calls">Calls &amp; Audio</string>
+    <string name="nav_pairing">Pairing</string>
+    <string name="nav_diagnostics">Diagnostics</string>
 
-    <!-- Section Titles -->
-    <string name="section_app_status">A. Application Status</string>
-    <string name="section_controls">Service Controls &amp; Live Diagnostics</string>
-    <string name="section_permissions">B. Permission &amp; Role Checklist</string>
-    <string name="section_ble">C. BLE Peripheral &amp; GATT Server</string>
-    <string name="section_network">D. Local Network (Wi-Fi / Hotspot)</string>
-    <string name="section_call">E. Cellular Call &amp; Telecom Status</string>
-    <string name="section_audio">F. Audio Architecture (Mic Test vs Cellular)</string>
-    <string name="section_logs">G. Live Event Log</string>
-
-    <!-- Labels: App Status -->
-    <string name="label_service_status">Bridge Service</string>
-    <string name="label_ble_status">BLE Status</string>
-    <string name="label_iphone_connection">iPhone Connection</string>
-    <string name="label_call_state">Cellular Call State</string>
-    <string name="label_network_status">Local Network</string>
-    <string name="label_audio_capability">Cellular Audio Capability</string>
-
-    <!-- Controls -->
+    <!-- Service & Hero -->
+    <string name="service_running">Bridge Service Running</string>
+    <string name="service_stopped">Bridge Service Stopped</string>
+    <string name="service_starting">Starting Bridge Service…</string>
+    <string name="service_error">Bridge Service Error</string>
     <string name="action_start_bridge">Start Bridge</string>
     <string name="action_stop_bridge">Stop Bridge</string>
-    <string name="action_pair_iphone">Pair iPhone</string>
-    <string name="action_test_ble">Test BLE</string>
-    <string name="action_test_network">Test Network</string>
-    <string name="action_test_mic">Test Microphone</string>
-    <string name="action_stop_mic_test">Stop Mic Test</string>
-    <string name="action_test_dial">Test Outgoing Dial</string>
-    <string name="action_clear_logs">Clear</string>
+    <string name="action_sync_all">Sync Android Data to iPhone</string>
 
-    <!-- Permissions -->
-    <string name="perm_bluetooth">Bluetooth Peripheral Permissions</string>
-    <string name="perm_phone_state">Phone State (READ_PHONE_STATE)</string>
-    <string name="perm_notifications">Notifications (Android 13+)</string>
-    <string name="perm_microphone">Microphone (Mic Test Only)</string>
-    <string name="perm_call_phone">Outgoing Call (CALL_PHONE)</string>
-    <string name="perm_default_dialer">Default Dialer Role (ROLE_DIALER / InCallService)</string>
-    <string name="perm_battery_opt">Battery Optimization Exemption (Optional)</string>
-    <string name="btn_grant">Grant</string>
-    <string name="btn_configure">Configure</string>
-    <string name="btn_granted">Granted</string>
-    <string name="btn_not_needed">Not Required</string>
-    <string name="btn_unsupported">Unsupported</string>
-
-    <!-- BLE Fields -->
-    <string name="label_bt_enabled">Bluetooth Adapter</string>
-    <string name="label_ble_peripheral">BLE Peripheral Support</string>
-    <string name="label_ble_advertising">Advertising</string>
-    <string name="label_gatt_server">GATT Server</string>
-    <string name="label_ble_client">iPhone Client</string>
-    <string name="label_ble_mtu">Negotiated MTU / Auth</string>
-
-    <!-- Network Fields -->
-    <string name="label_active_network">Active Interface</string>
-    <string name="label_local_ip">Local IP Address</string>
-    <string name="label_server_port">Control / Dev UDP Port</string>
-    <string name="label_server_status">Server Status</string>
-    <string name="label_connected_client">Connected Client</string>
-
-    <!-- Call Fields -->
-    <string name="label_call_direction">Direction</string>
-    <string name="label_caller_number">Caller Number (Best-Effort)</string>
-    <string name="label_call_controls_available">Call-Control Capability</string>
-    <string name="btn_answer_call">Answer</string>
-    <string name="btn_reject_call">Reject</string>
-    <string name="btn_end_call">Hang Up</string>
-
-    <!-- Audio Fields -->
-    <string name="label_audio_mic_perm">Microphone Permission</string>
-    <string name="label_audio_record">AudioRecord Availability</string>
-    <string name="label_audio_track">AudioTrack Availability</string>
-    <string name="label_audio_effects">Audio Effects (AEC / NS / AGC)</string>
-    <string name="label_cellular_audio_cap">Direct Cellular Audio Capture</string>
-    <string name="label_audio_metrics">Mic Test Telemetry (Frames / Latency)</string>
-    <string name="audio_honesty_notice">Technical Notice: Standard third-party Android apps cannot capture VOICE_CALL/UPLINK/DOWNLINK or inject PCM into cellular uplink. Microphone Test exercises local mic-to-speaker PCM (16 kHz Mono) only and is NOT a cellular call audio bridge.</string>
-
-    <!-- Status values -->
-    <string name="status_running">Running</string>
-    <string name="status_starting">Starting</string>
-    <string name="status_stopped">Stopped</string>
-    <string name="status_error">Error</string>
-    <string name="status_enabled">Enabled</string>
-    <string name="status_disabled">Disabled</string>
-    <string name="status_supported">Supported</string>
-    <string name="status_not_supported">Not Supported</string>
-    <string name="status_active">Active</string>
-    <string name="status_inactive">Inactive</string>
-    <string name="status_initialized">Initialized</string>
-    <string name="status_not_initialized">Not Initialized</string>
+    <!-- Dashboard Section -->
+    <string name="section_connection">iPhone Link, BLE &amp; Local TLS Server (WSS)</string>
+    <string name="section_sync_overview">Synchronization &amp; Local Network</string>
+    <string name="section_permissions">Permissions &amp; Play Creator Compliance</string>
+    <string name="label_iphone_status">iPhone Connection</string>
+    <string name="label_ble_status">BLE Peripheral (4 GATT Chars)</string>
+    <string name="label_wss_endpoint">TLS WebSocket Endpoint</string>
+    <string name="label_nsd_status">mDNS Discovery (_bridgelink._tcp)</string>
+    <string name="label_sync_status">Sync Status</string>
+    <string name="label_device_info">Device &amp; Android API</string>
+    <string name="label_sim_count">Active SIM Cards</string>
     <string name="status_connected">Connected</string>
     <string name="status_disconnected">Disconnected</string>
-    <string name="status_listening">Listening</string>
-    <string name="status_available">Available</string>
-    <string name="status_unavailable">Unavailable</string>
-    <string name="status_authenticated">Authenticated</string>
-    <string name="status_unauthenticated">Unauthenticated</string>
-    <string name="status_none">None</string>
+    <string name="status_advertising">Advertising</string>
+    <string name="status_inactive">Inactive</string>
+    <string name="status_listening">Listening (TLS 1.2/1.3)</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="status_granted">Granted</string>
+    <string name="status_denied">Required</string>
+    <string name="status_not_required">Not Required</string>
+    <string name="status_unsupported">Unsupported</string>
+    <string name="status_creator_safe">Play Creator Compliant</string>
 
-    <!-- Call states -->
-    <string name="call_state_idle">Idle</string>
-    <string name="call_state_ringing">Incoming Ringing</string>
-    <string name="call_state_offhook">Active / Offhook</string>
-    <string name="call_state_disconnected">Disconnected</string>
-    <string name="call_state_unknown">Unknown</string>
+    <!-- Permissions Labels -->
+    <string name="perm_bluetooth">Bluetooth (BLE Peripheral)</string>
+    <string name="perm_phone_state">Phone &amp; SIM State</string>
+    <string name="perm_contacts">Contacts (Read &amp; Write)</string>
+    <string name="perm_notifications">Notifications (Android 13+)</string>
+    <string name="perm_microphone">Microphone (Local Audio Test)</string>
+    <string name="perm_call_phone">Place Calls (CALL_PHONE)</string>
+    <string name="perm_default_dialer">Default Dialer Role (ROLE_DIALER)</string>
+    <string name="perm_battery">Battery Optimization Exemption</string>
+    <string name="perm_sms_creator">Background SMS Access</string>
+    <string name="perm_calllog_creator">System Call Log Provider</string>
+    <string name="action_grant">Grant</string>
+    <string name="action_configure">Set Up</string>
+    <string name="action_open_settings">Settings</string>
 
-    <string name="call_dir_incoming">Incoming</string>
-    <string name="call_dir_outgoing">Outgoing</string>
-    <string name="call_dir_unknown">Unknown</string>
+    <!-- Messages Tab (Play Creator Compliant) -->
+    <string name="section_sms_mode">SMS Companion (Play Creator Compliant Mode)</string>
+    <string name="sms_creator_notice">To comply with Google Play Creator Program rules, restricted READ_SMS / RECEIVE_SMS / SEND_SMS permissions are omitted. Outgoing SMS uses an idempotent Room outbox and zero-permission system handoff (ACTION_SENDTO).</string>
+    <string name="label_sms_mode">SMS Mode</string>
+    <string name="label_default_sms_role">Default SMS Role</string>
+    <string name="label_selected_sim">Selected SIM</string>
+    <string name="label_outbox_count">Queued Outbox Items</string>
+    <string name="action_compose_sms">Compose SMS (System Handoff)</string>
+    <string name="action_select_sim">Select SIM</string>
+    <string name="dialog_sms_title">System SMS Handoff</string>
+    <string name="hint_sms_destination">Recipient number (e.g. +15550109999)</string>
+    <string name="hint_sms_body">Message body…</string>
+    <string name="action_send_handoff">Queue &amp; Open SMS App</string>
 
-    <string name="call_cap_full">Full (Answer / Reject / Hangup via InCallService)</string>
-    <string name="call_cap_not_dialer">Monitor Only — Set as Default Dialer for InCallService control</string>
-    <string name="call_cap_legacy">Monitor Only — API 21/22 has no public InCallService</string>
-    <string name="call_cap_no_perm">READ_PHONE_STATE permission missing</string>
+    <!-- Contacts Tab -->
+    <string name="section_contacts_sync">Authoritative Android Contacts Sync</string>
+    <string name="contacts_authority_notice">Android is authoritative for contacts. Each record is hashed with SHA-256 to detect concurrent edit conflicts without silent overwrites, and confirmed deletions record sync tombstones.</string>
+    <string name="label_contacts_count">Android Contacts Count</string>
+    <string name="label_contacts_observer">ContentObserver Live Tracking</string>
+    <string name="label_contacts_conflicts">Pending Conflicts</string>
+    <string name="action_sync_contacts">Sync Contacts Now</string>
+    <string name="action_add_contact">Add New Contact</string>
+    <string name="dialog_contact_title">Add Android Contact</string>
+    <string name="hint_contact_name">Display Name</string>
+    <string name="hint_contact_phone">Phone Number</string>
+    <string name="action_save_contact">Save to Android</string>
 
-    <!-- Dialogs & Messages -->
-    <string name="dialog_pairing_window_title">iPhone Pairing Window Open</string>
-    <string name="dialog_pairing_window_body">Enter this 6-digit PIN on your iPhone companion app. Explicit confirmation on Android will still be required before trusting commands.\n\nPairing PIN: %1$s\n\nCurrently paired: %2$s</string>
-    <string name="dialog_pairing_approval_title">Approve New iPhone Pairing</string>
-    <string name="dialog_pairing_approval_body">Device \"%1$s\" requested pairing for call control.\nVerification PIN: %2$s\n\nAllow this iPhone to send call commands?</string>
-    <string name="dialog_approve">Approve &amp; Pair</string>
+    <!-- Calls & Audio Tab -->
+    <string name="section_calls_control">Telecom Call Control (9-State Lifecycle)</string>
+    <string name="label_call_state">Call State</string>
+    <string name="label_caller">Caller / Number</string>
+    <string name="label_call_control_cap">Call Control Capability</string>
+    <string name="label_observed_calls">BridgeLink Observed Call History</string>
+    <string name="calllog_creator_notice">Call history records only calls observed directly by BridgeLink into Room (without prohibited READ_CALL_LOG permission) and syncs paginated records to iPhone.</string>
+    <string name="action_answer">Answer</string>
+    <string name="action_reject">Reject</string>
+    <string name="action_hangup">Hang Up</string>
+    <string name="action_dial">Dial</string>
+    <string name="action_set_default_dialer">Set Default Dialer</string>
+
+    <string name="section_audio_isolation">Isolated Local Audio &amp; Cellular Audio Honesty</string>
+    <string name="label_cellular_audio_cap">Cellular Audio Capability</string>
+    <string name="audio_limitation_notice">Android OS Restriction: standard third-party apps cannot capture cellular VOICE_CALL audio or inject PCM into uplink. This module runs local 16 kHz PCM Mono microphone testing only and explicitly reports CELLULAR_AUDIO_UNAVAILABLE.</string>
+    <string name="action_start_mic_test">Start Mic Test</string>
+    <string name="action_stop_mic_test">Stop Mic Test</string>
+    <string name="label_mic_rms">Mic RMS Level</string>
+
+    <!-- Pairing Tab -->
+    <string name="section_qr_pairing">Secure QR Pairing &amp; TLS Certificate Pinning</string>
+    <string name="pairing_qr_notice">This QR encodes a 120s one-time token, local WSS host/port, and the TLS X.509 SHA-256 fingerprint for certificate pinning. Explicit user confirmation on Android is still required after scanning.</string>
+    <string name="label_paired_device">Paired Device</string>
+    <string name="label_android_device_id">Android Device ID</string>
+    <string name="label_tls_fingerprint">TLS Cert Pin (SHA-256)</string>
+    <string name="label_pairing_pin">Active 6-Digit PIN</string>
+    <string name="status_not_paired">Not Paired</string>
+    <string name="action_regenerate_qr">Regenerate QR</string>
+    <string name="action_disconnect_iphone">Disconnect iPhone</string>
+    <string name="action_revoke_pairing">Revoke Pairing</string>
+
+    <!-- Diagnostics Tab -->
+    <string name="section_diagnostics">Live Diagnostics &amp; Real Self-Tests</string>
+    <string name="action_test_ble">Test BLE</string>
+    <string name="action_test_wss">Test TLS WSS</string>
+    <string name="action_test_mic">Test Mic</string>
+    <string name="action_clear_logs">Clear Logs</string>
+    <string name="section_event_log">Live Event Log (Sanitized, No PII)</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_dial_title">Place Outgoing Call</string>
+    <string name="dialog_dial_hint">Phone number (e.g. +15550109999)</string>
+    <string name="dialog_confirm">Confirm</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_approve">Approve Pairing</string>
     <string name="dialog_reject">Reject</string>
-    <string name="dialog_unpair">Unpair Device</string>
-    <string name="dialog_close">Close</string>
+    <string name="dialog_pairing_approval_title">iPhone Pairing Request</string>
+    <string name="dialog_pairing_approval_body">Device "%1$s" wants to pair with BridgeLink.\n6-Digit Verification PIN: %2$s\n\nApprove this device?</string>
+    <string name="dialog_battery_title">Battery Optimization</string>
+    <string name="dialog_battery_body">To keep the local BLE and TLS WebSocket server reliable in the background, you may exempt BridgeLink from battery optimization.</string>
 
-    <string name="dialog_battery_title">Battery Optimization Exemption</string>
-    <string name="dialog_battery_body">Ignoring battery optimizations can improve Foreground Service and BLE reliability while the screen is off. However, OEM power managers vary and unlimited background execution cannot be guaranteed.</string>
-    <string name="dialog_open_settings">Open System Settings</string>
-
-    <string name="dialog_dial_title">Test Outgoing Dial (Telecom API)</string>
-    <string name="dialog_dial_hint">Phone number (e.g. +989120000000)</string>
-    <string name="dialog_dial_action">Place Call</string>
-
-    <string name="msg_bt_perm_required_for_service">Grant Bluetooth peripheral permissions first before starting the bridge on Android 12+.</string>
-    <string name="msg_mic_perm_required">Grant RECORD_AUDIO permission first to run the microphone test.</string>
-    <string name="msg_dialer_unavailable">Default dialer role request is unavailable on this Android version or device.</string>
-    <string name="msg_empty_logs">No events recorded yet.</string>
-    <string name="cd_section_icon">Section icon</string>
+    <!-- Notifications -->
+    <string name="notif_channel_name">BridgeLink Companion Service</string>
+    <string name="notif_channel_description">Keeps local BLE signaling, TLS sync server, and call monitoring active.</string>
+    <string name="notif_waiting">BridgeLink Ready — Waiting for iPhone</string>
+    <string name="notif_connected">BridgeLink Connected to iPhone</string>
+    <string name="notif_syncing">BridgeLink Syncing Android Data…</string>
+    <string name="notif_incoming_call">Incoming Call: %1$s</string>
+    <string name="notif_active_call">Active Call Monitoring</string>
+    <string name="notif_audio_unavailable">Active — Direct cellular audio unavailable on standard Android</string>
+    <string name="notif_bridge_running_subtext">Local BridgeLink companion service is running</string>
 </resources>

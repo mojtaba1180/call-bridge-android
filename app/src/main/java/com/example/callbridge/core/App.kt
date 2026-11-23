@@ -21,7 +21,7 @@ class App : Application() {
         applySavedOrDefaultLocale()
         container = AppContainer(this)
         BridgeNotificationManager(this).ensureChannelCreated()
-        Logger.i("App", "CallBridge initialized on ${VersionUtils.androidVersionLabel()}")
+        Logger.i("App", "BridgeLink initialized on ${VersionUtils.androidVersionLabel()}")
     }
 
     private fun applySavedOrDefaultLocale() {

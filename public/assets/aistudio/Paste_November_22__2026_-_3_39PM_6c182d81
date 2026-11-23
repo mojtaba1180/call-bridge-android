@@ -1,0 +1,1387 @@
+# BRIDGELINK – ANDROID COMPANION APPLICATION
+
+## 1. Role and Objective
+
+Act as a Principal Android Engineer, Software Architect, and Mobile Systems Specialist.
+
+Build the complete Android Companion application for BridgeLink.
+
+The application connects an Android smartphone containing a physical SIM card to a native iOS companion application.
+
+The Android smartphone is the authoritative source for:
+
+- Cellular calls.
+- SMS messages.
+- Contacts.
+- Cellular call history.
+- SIM subscription information.
+- Device connection status.
+
+The iPhone is a remote interface for viewing and managing these resources.
+
+The Android application must be independently functional and must communicate with the future iOS application using the shared contract in:
+
+`BRIDGELINK_PROTOCOL.md`
+
+Do not create an unrelated communication protocol.
+
+Do not implement features by pretending unsupported Android capabilities are available.
+
+Prioritize correctness, security, modularity, and real-device compatibility.
+
+---
+
+## 2. Technology Stack
+
+Use:
+
+- Kotlin.
+- Native Android SDK.
+- XML layouts.
+- ViewBinding.
+- Kotlin Coroutines.
+- StateFlow and SharedFlow.
+- AndroidX Lifecycle.
+- Android Telecom.
+- Android Telephony.
+- Android SMS Provider.
+- Android Contacts Provider.
+- Android CallLog Provider.
+- Bluetooth LE GATT Server.
+- Android Network Service Discovery (NSD).
+- WebSocket over TLS.
+- Room for local operational data and synchronization metadata.
+- Android Keystore for cryptographic key protection.
+
+Do not use Jetpack Compose.
+
+Do not use unnecessary libraries.
+
+Do not introduce a cloud backend.
+
+### SDK Configuration
+
+- minSdk: 21.
+- compileSdk: Latest stable SDK installed in the development environment.
+- targetSdk: Latest stable SDK supported by the installed toolchain.
+- Use current Android platform requirements instead of hardcoding an outdated target SDK.
+- Preserve compatibility for legacy APIs using explicit version checks.
+
+Where a feature is not supported on API 21 or 22, provide a clearly defined fallback.
+
+---
+
+## 3. Product Architecture
+
+Implement the following functional modules:
+
+1. Device and Bridge Management.
+2. BLE Communication.
+3. Local Network Communication.
+4. SMS Management.
+5. Contact Management.
+6. Cellular Call Management.
+7. Call History.
+8. Synchronization Engine.
+9. Pairing and Security.
+10. Audio Capability Detection.
+11. Dashboard and Diagnostics.
+
+### Authoritative Data Direction
+
+Android is the primary data source.
+
+The following operations must be supported:
+
+| Resource | Main direction |
+|---|---|
+| Incoming SMS | Android → iPhone |
+| SMS history | Android → iPhone |
+| Sending SMS | iPhone → Android → Cellular Network |
+| Contacts | Bidirectional management |
+| Call history | Android → iPhone |
+| Incoming call events | Android → iPhone |
+| Answer / Reject / Hang Up | iPhone → Android |
+| Outgoing call request | iPhone → Android |
+| Device status | Bidirectional |
+
+For bidirectional contacts, Android Contacts Provider remains the authoritative store.
+
+Contact changes received from iOS must be validated and applied to Android through ContactsContract when the user has granted WRITE_CONTACTS.
+
+---
+
+## 4. Suggested Project Structure
+
+Use a modular architecture with separation between the application UI, data providers, domain logic, and transport.
+
+Suggested package structure:
+
+com.bridgelink.android/
+
+    app/
+        BridgeLinkApplication.kt
+        AppInitializer.kt
+
+    core/
+        config/
+        models/
+        result/
+        logger/
+        extensions/
+
+    security/
+        PairingManager.kt
+        KeyStoreManager.kt
+        SessionAuthenticator.kt
+        CertificatePinningManager.kt
+
+    permissions/
+        PermissionManager.kt
+        PermissionCapability.kt
+        RoleManagerCompat.kt
+
+    device/
+        DeviceManager.kt
+        SimManager.kt
+        DeviceCapabilities.kt
+        BridgeStatus.kt
+
+    service/
+        BridgeForegroundService.kt
+        BridgeNotificationManager.kt
+        BridgeServiceController.kt
+        WakeLockManager.kt
+
+    bluetooth/
+        BleSignalingServer.kt
+        BleGattServerManager.kt
+        BleAdvertisingManager.kt
+        BleMessageFramer.kt
+        BleConnectionManager.kt
+        BleConstants.kt
+
+    network/
+        LocalNetworkManager.kt
+        LocalNetworkServer.kt
+        WebSocketServer.kt
+        NetworkDiscoveryManager.kt
+        LocalIpResolver.kt
+
+    sms/
+        SmsManager.kt
+        SmsRepository.kt
+        SmsProviderDataSource.kt
+        SmsReceiver.kt
+        SmsSender.kt
+        SmsOutboxManager.kt
+        SmsPermissionManager.kt
+        SmsModels.kt
+
+    contacts/
+        ContactsManager.kt
+        ContactsRepository.kt
+        ContactsProviderDataSource.kt
+        ContactsObserver.kt
+        ContactsSyncManager.kt
+        ContactModels.kt
+
+    telephony/
+        CallManager.kt
+        CallStateMonitor.kt
+        CallStateListener.kt
+        TelephonyCallbackManager.kt
+        BridgeInCallService.kt
+        DefaultDialerManager.kt
+        CallControlManager.kt
+        CallModels.kt
+
+    callhistory/
+        CallHistoryRepository.kt
+        CallHistoryProvider.kt
+        CallHistorySyncManager.kt
+        CallHistoryModels.kt
+
+    sync/
+        SyncEngine.kt
+        SyncCoordinator.kt
+        SyncCursorStore.kt
+        SyncPageProcessor.kt
+        SyncConflictResolver.kt
+        SyncTombstoneManager.kt
+
+    protocol/
+        BridgeProtocol.kt
+        BridgeEnvelope.kt
+        MessageSerializer.kt
+        ProtocolConstants.kt
+        CommandRouter.kt
+        CommandResult.kt
+
+    audio/
+        AudioCapabilityChecker.kt
+        LocalAudioBridge.kt
+        AudioCaptureSource.kt
+        AudioPlaybackSink.kt
+        AudioEffectsManager.kt
+
+    ui/
+        MainActivity.kt
+        dashboard/
+        messages/
+        contacts/
+        calls/
+        history/
+        settings/
+        diagnostics/
+
+    database/
+        BridgeDatabase.kt
+        entities/
+        dao/
+
+    utils/
+        PhoneNumberUtils.kt
+        DateTimeUtils.kt
+        NetworkUtils.kt
+        AndroidVersionUtils.kt
+
+Adjust the package structure when implementation requires it, but preserve clear module boundaries.
+
+---
+
+## 5. Device and Capability Detection
+
+Implement a central DeviceCapabilities component.
+
+It must check:
+
+- Bluetooth LE hardware.
+- BLE Peripheral support.
+- BLE advertising support.
+- GATT Server availability.
+- Telephony hardware.
+- SMS capability.
+- SIM count.
+- Active subscriptions.
+- Runtime permissions.
+- Default SMS role.
+- Default Dialer role.
+- Contact Provider availability.
+- Call Log access.
+- Local network availability.
+- Foreground Service eligibility.
+- Audio recording capability.
+- Cellular audio capture limitations.
+
+Expose a structured capability model.
+
+Example:
+
+data class DeviceCapabilities(
+    val blePeripheralSupported: Boolean,
+    val bleAdvertisingSupported: Boolean,
+    val telephonyAvailable: Boolean,
+    val smsAvailable: Boolean,
+    val contactAccessAvailable: Boolean,
+    val callLogAccessAvailable: Boolean,
+    val inCallServiceAvailable: Boolean,
+    val microphoneAvailable: Boolean,
+    val cellularAudioCaptureAvailable: Boolean
+)
+
+Do not treat microphone availability as cellular audio capture availability.
+
+Display unavailable features explicitly.
+
+---
+
+## 6. Foreground Service
+
+Implement:
+
+BridgeForegroundService.kt
+
+Responsibilities:
+
+- Maintain the active BLE communication session.
+- Maintain the connected companion device state.
+- Listen to eligible system events.
+- Coordinate connection restoration.
+- Publish bridge status.
+- Coordinate local-network synchronization during appropriate execution windows.
+- Display persistent notification information.
+- Manage temporary WakeLocks when necessary.
+
+Example notification:
+
+BridgeLink – Connected
+
+iPhone: Connected
+Bluetooth: Active
+Messages: Synchronization enabled
+Calls: Waiting
+
+Another state:
+
+BridgeLink – Waiting
+
+iPhone: Disconnected
+Bluetooth: Advertising
+
+### Android Background Execution
+
+Follow the current Android background execution restrictions.
+
+Evaluate Companion Device Manager APIs and appropriate foreground-service use.
+
+Use the connectedDevice foreground-service type when its requirements are satisfied.
+
+Use phoneCall only when the application meets the documented eligibility requirements, such as ROLE_DIALER or MANAGE_OWN_CALLS.
+
+Use microphone only during an eligible microphone session.
+
+Use dataSync only for appropriate transfer operations and comply with newer Android execution time limits.
+
+Do not declare all foreground-service types merely to keep a process alive.
+
+Do not claim the service can run forever.
+
+Implement:
+
+- Proper notification channels.
+- User-controlled service start/stop.
+- Process recreation handling.
+- Connection recovery.
+- Graceful cleanup.
+- WakeLock timeout.
+- Service lifecycle logging.
+
+The service must not automatically attempt restricted background operations following device boot.
+
+---
+
+# 7. SMS Management Module
+
+This is one of the most important modules.
+
+Implement a complete SMS bridge using the Android Telephony framework.
+
+## 7.1 Incoming SMS
+
+Implement:
+
+SmsReceiver.kt
+
+Support receiving new SMS messages using the documented Android broadcast APIs.
+
+Handle:
+
+- Multipart SMS.
+- Different SIM subscriptions.
+- Sender number.
+- Message body.
+- Received timestamp.
+- Subscription ID.
+- Encoding differences.
+- Duplicate broadcast prevention.
+
+Use SMS_RECEIVED_ACTION for supported companion-mode operation.
+
+When the application is the designated default SMS handler, also implement the appropriate SMS_DELIVER_ACTION workflow and persist incoming messages to the system SMS Provider as required.
+
+Never persist the same SMS twice.
+
+Do not assume SMS_DELIVER_ACTION is delivered to non-default SMS applications.
+
+## 7.2 SMS History
+
+Implement:
+
+SmsProviderDataSource.kt
+
+Read existing SMS records using ContentResolver and Telephony.Sms.
+
+Required data:
+
+- Provider message ID.
+- Thread ID.
+- Sender / recipient.
+- Message body.
+- Received date.
+- Sent date.
+- Message type.
+- Read state.
+- SIM subscription.
+- Delivery status where available.
+
+Support:
+
+- Inbox.
+- Sent.
+- Failed.
+- Draft.
+- Read / Unread.
+
+Do not assume SMS Provider records contain every advanced carrier feature.
+
+MMS and RCS are outside the initial scope.
+
+## 7.3 SMS Sending
+
+Implement:
+
+SmsSender.kt
+
+Provide:
+
+suspend fun sendSms(
+    destination: String,
+    message: String,
+    subscriptionId: Int?
+): SmsSendResult
+
+Use SmsManager.
+
+Handle:
+
+- Runtime permissions.
+- Invalid phone number.
+- Missing SIM.
+- Multiple SIM cards.
+- Message segmentation.
+- Multipart messages.
+- SMS sending failures.
+- Carrier restrictions.
+- Sent PendingIntents.
+- Delivery PendingIntents.
+- Service unavailable.
+- Device without telephony messaging capability.
+
+The selected SIM must be explicit where multiple subscriptions exist.
+
+Do not silently select an arbitrary SIM.
+
+Provide proper sending states:
+
+QUEUED
+SENDING
+SENT
+FAILED
+DELIVERED
+DELIVERY_UNKNOWN
+
+Only mark delivery as confirmed when a valid delivery report is received.
+
+Use idempotency keys for outgoing requests.
+
+If an iPhone command is repeated, do not send the same SMS again.
+
+Maintain a persistent outbox for operations awaiting completion.
+
+## 7.4 SMS Role and Permission Management
+
+Implement clear permission and role handling.
+
+Potential permissions:
+
+READ_SMS
+RECEIVE_SMS
+SEND_SMS
+READ_PHONE_STATE
+
+Request other SMS-related permissions only when the selected implementation genuinely needs them.
+
+Support two operating modes:
+
+A. Companion Mode
+
+- Uses granted permissions where available.
+- Receives eligible SMS broadcasts.
+- Reads accessible historical SMS records.
+- Does not pretend to be the default SMS application.
+- Exposes reduced functionality when permissions are unavailable.
+
+B. Default SMS Mode
+
+- Requests the Android SMS role only after explaining its implications.
+- Implements the required default SMS handling flow.
+- Handles incoming SMS delivery through the correct broadcast.
+- Uses the system SMS Provider appropriately.
+- Provides a functional Android SMS-management fallback if needed.
+
+If Google Play distribution is intended, comply with the active SMS and Call Log permissions policy.
+
+Do not assume that a sideloaded application is automatically approved for Google Play distribution.
+
+The permission screen must clearly explain why access is required.
+
+---
+
+# 8. Contact Management Module
+
+Implement:
+
+ContactsManager.kt
+ContactsRepository.kt
+ContactsProviderDataSource.kt
+
+Use:
+
+android.provider.ContactsContract
+
+Required operations:
+
+suspend fun getContacts(): List<Contact>
+
+suspend fun getContact(id: String): Contact?
+
+suspend fun createContact(contact: Contact): ContactResult
+
+suspend fun updateContact(
+    contactId: String,
+    contact: Contact
+): ContactResult
+
+suspend fun deleteContact(contactId: String): ContactResult
+
+Support:
+
+- Contact ID.
+- Lookup key.
+- First name.
+- Last name.
+- Display name.
+- Multiple phone numbers.
+- Phone number labels.
+- Email addresses.
+- Organization.
+- Optional photo.
+- Updated timestamp.
+
+Implement duplicate detection.
+
+Normalize phone numbers where possible.
+
+Preserve original values.
+
+Do not merge contacts just because their names are identical.
+
+Use ContactsContract aggregation-aware APIs.
+
+When iOS sends an update:
+
+1. Validate the contact ID.
+2. Check the expected record version or fingerprint.
+3. Detect conflicts.
+4. Apply an explicit merge policy.
+5. Return the updated Android record.
+6. Publish the resulting version back to iOS.
+
+Implement contact deletion using explicit user confirmation and a synchronized tombstone.
+
+Do not silently delete unrelated Android contacts.
+
+### Native Contact Provider Observation
+
+Use ContentObserver to detect changes in Android contacts.
+
+When a contact changes:
+
+- Resolve its current data.
+- Recalculate its content fingerprint.
+- Generate a delta.
+- Notify the synchronization engine.
+
+---
+
+# 9. Cellular Telephony and Call Management
+
+Implement:
+
+CallManager.kt
+
+Use:
+
+PhoneStateListener for API 21–30.
+
+TelephonyCallback.CallStateListener for API 31+.
+
+However, call-state APIs alone do not provide complete call metadata or reliable call-control capabilities.
+
+For richer call management, implement:
+
+BridgeInCallService.kt
+
+Use InCallService when the application is appropriately configured as the default dialer.
+
+Support API 23+ for InCallService.
+
+Use Android RoleManager for role handling on supported versions.
+
+## Call States
+
+enum class CallState {
+    IDLE,
+    RINGING,
+    DIALING,
+    CONNECTING,
+    ACTIVE,
+    HOLDING,
+    DISCONNECTING,
+    DISCONNECTED,
+    UNKNOWN
+}
+
+Call metadata:
+
+data class CallInfo(
+    val callId: String?,
+    val phoneNumber: String?,
+    val displayName: String?,
+    val direction: CallDirection,
+    val state: CallState,
+    val startTime: Long?,
+    val subscriptionId: Int?
+)
+
+## Call Operations
+
+Implement:
+
+suspend fun answerCall(): CallOperationResult
+
+suspend fun rejectCall(): CallOperationResult
+
+suspend fun endCall(): CallOperationResult
+
+suspend fun dialNumber(number: String): CallOperationResult
+
+Use documented Telecom APIs.
+
+For InCallService:
+
+- Manage onCallAdded.
+- Manage onCallRemoved.
+- Observe Call.Callback.
+- Handle incoming calls.
+- Handle outgoing calls.
+- Handle call-state changes.
+- Release references to removed calls.
+- Handle concurrent calls appropriately.
+- Handle dual-SIM information where available.
+
+Use Call.answer(), Call.reject() and Call.disconnect() when applicable.
+
+Do not use hidden APIs, reflection or Accessibility Services to bypass call-control permissions.
+
+For API 21–22, report the limited capability set.
+
+For outgoing calls, use the appropriate supported user flow.
+
+If remote unattended call initiation is disabled, require user confirmation.
+
+Never report a successful call operation until the actual Telecom operation has succeeded.
+
+---
+
+# 10. Call History Module
+
+Implement:
+
+CallHistoryRepository.kt
+
+Use:
+
+android.provider.CallLog.Calls
+
+Read historical records only after the required access permissions are granted.
+
+Fields:
+
+- Call ID.
+- Phone number.
+- Cached contact name.
+- Call type.
+- Call date.
+- Duration.
+- SIM account information where available.
+- New / read status where available.
+
+Supported call types should include:
+
+- INCOMING.
+- OUTGOING.
+- MISSED.
+- REJECTED.
+- BLOCKED.
+- VOICEMAIL, where available.
+
+Do not assume all OEMs expose identical call-log metadata.
+
+Implement:
+
+- Initial history synchronization.
+- Incremental updates.
+- ContentObserver.
+- Cursor persistence.
+- Duplicate protection.
+- Tombstones for deletions.
+- Pagination.
+
+Expose the Call History module through the common protocol.
+
+Do not access the native iOS call log.
+
+---
+
+# 11. BLE GATT Server
+
+Implement:
+
+BleSignalingServer.kt
+
+The Android phone is the BLE Peripheral.
+
+The iPhone is the BLE Central.
+
+Use the exact UUIDs defined in BRIDGELINK_PROTOCOL.md.
+
+Characteristics:
+
+DEVICE_INFO
+EVENT_STREAM
+COMMAND
+PAIRING
+
+Support:
+
+- Bluetooth adapter state.
+- GATT Server initialization.
+- Service registration.
+- Advertising.
+- GATT connection lifecycle.
+- Client subscriptions.
+- Read requests.
+- Write requests.
+- Notifications.
+- Indications when appropriate.
+- MTU negotiation.
+- Fragmentation.
+- Sequence validation.
+- Reconnection.
+- Resource cleanup.
+
+Check:
+
+BluetoothAdapter.isMultipleAdvertisementSupported()
+
+If the device cannot advertise as a BLE Peripheral, expose a clear unsupported status.
+
+Do not assume all Android devices support BLE Peripheral operation.
+
+## Notification payloads
+
+Publish:
+
+- Call events.
+- SMS notification metadata.
+- Connection state.
+- Pairing events.
+- Network endpoint information.
+- Command results.
+
+For large messages, use the local network transport.
+
+Never attempt to send an unlimited JSON payload as one BLE notification.
+
+Implement a framed transport with:
+
+- Protocol version.
+- Message identifier.
+- Chunk index.
+- Total chunk count.
+- Payload length.
+- Acknowledgment.
+- Timeout.
+- Duplicate detection.
+
+Use the exact framing specification in the shared protocol document.
+
+---
+
+# 12. Local Network and WebSocket Server
+
+Implement:
+
+LocalNetworkServer.kt
+
+Use TLS-protected WebSocket communication.
+
+Suggested endpoint:
+
+wss://ANDROID_LOCAL_IP:PORT/bridge/v1
+
+Use Android Network Service Discovery or an equivalent mDNS mechanism to advertise:
+
+_bridgelink._tcp
+
+The server must support:
+
+- iOS client connection.
+- Authentication.
+- Session establishment.
+- Device information.
+- Initial synchronization.
+- Incremental synchronization.
+- SMS page transfer.
+- Contact page transfer.
+- Call-history transfer.
+- Contact modification commands.
+- SMS sending commands.
+- Call-control commands.
+- Acknowledgments.
+- Reconnection.
+
+Handle:
+
+- Wi-Fi unavailable.
+- Hotspot unavailable.
+- IP address changes.
+- Android network transitions.
+- Server restart.
+- Client disconnect.
+- TLS authentication failures.
+
+Bind only to the intended local network interfaces.
+
+Do not expose the server to the public internet.
+
+Do not assume hotspot IP addresses are always identical.
+
+Do not automatically reconfigure the iPhone's Wi-Fi.
+
+The user must be able to see the connection instructions.
+
+---
+
+# 13. Synchronization Engine
+
+Implement:
+
+SyncEngine.kt
+SyncCoordinator.kt
+SyncCursorStore.kt
+SyncPageProcessor.kt
+SyncConflictResolver.kt
+
+The Android device is the authoritative data source.
+
+Support these synchronization entities:
+
+- SMS.
+- Contacts.
+- Call History.
+- Device Metadata.
+
+## Initial Synchronization
+
+Provide an explicit action:
+
+"Sync Android Data to iPhone"
+
+The process:
+
+1. Authenticate the companion.
+2. Negotiate protocol version.
+3. Read entity counts.
+4. Begin paginated transfer.
+5. Transfer SMS.
+6. Transfer contacts.
+7. Transfer call history.
+8. Receive page acknowledgments.
+9. Persist cursors.
+10. Verify completion.
+11. Publish synchronization status.
+
+Use bounded page sizes, preferably 100–250 records depending on available memory.
+
+Do not load the entire message history into RAM.
+
+## Incremental Synchronization
+
+Observe relevant ContentProvider changes.
+
+Use ContentObserver for:
+
+- SMS.
+- Contacts.
+- Call Log.
+
+Persist per-entity cursors.
+
+Handle same-timestamp collisions with a stable record identifier and overlapping time windows.
+
+Do not assume that provider timestamps are globally unique or perfectly ordered.
+
+For deleted records, use reconciliation and tombstones.
+
+## Conflict Handling
+
+Contacts may be modified on either device through the app.
+
+Define:
+
+- Record fingerprint.
+- Last synchronization version.
+- Source record ID.
+- Updated timestamp.
+- Conflict resolution policy.
+
+For v1, Android remains authoritative.
+
+When a record changes on both devices before synchronization:
+
+- Do not silently overwrite either record.
+- Return a conflict event.
+- Let the synchronization coordinator resolve or request user confirmation.
+
+SMS and call history remain effectively source-owned by Android and are read-only on iOS, except for supported SMS sending and read-state commands.
+
+---
+
+# 14. Pairing and Security
+
+Implement PairingManager.kt.
+
+Pairing should be an explicit user-initiated process.
+
+Use a one-time QR code to bootstrap the connection.
+
+The QR payload must include only the required one-time pairing information:
+
+- Protocol version.
+- Device identifier.
+- Temporary authentication token.
+- Server certificate fingerprint.
+- Pairing expiration timestamp.
+
+Use Android Keystore to store persistent credentials.
+
+The iPhone must validate the server certificate using the fingerprint established during pairing.
+
+Implement:
+
+- Pairing expiration.
+- User confirmation.
+- Device identity.
+- Session authentication.
+- Authorization of commands.
+- Revocation.
+- Session expiration.
+- Replay protection.
+- Request idempotency.
+- Brute-force rate limiting.
+
+Use standard cryptographic mechanisms.
+
+Do not implement custom encryption algorithms.
+
+Store no SMS bodies or contact details in logs.
+
+---
+
+# 15. Audio Capability and Prototype
+
+Implement the audio module as an isolated capability.
+
+Files:
+
+AudioCapabilityChecker.kt
+LocalAudioBridge.kt
+AudioCaptureSource.kt
+AudioPlaybackSink.kt
+AudioEffectsManager.kt
+
+Important platform restriction:
+
+Normal third-party Android applications cannot assume direct access to cellular downlink and uplink audio.
+
+VOICE_CALL, VOICE_UPLINK and VOICE_DOWNLINK require privileged access to CAPTURE_AUDIO_OUTPUT.
+
+Do not request this protected permission as if it could be granted to an ordinary application.
+
+AudioRecord with MIC or VOICE_COMMUNICATION is only a microphone/audio test path.
+
+AudioTrack does not inject arbitrary audio into a cellular call.
+
+Therefore:
+
+- Implement microphone loopback testing.
+- Implement PCM network transport abstractions.
+- Implement capability detection.
+- Report cellular audio capture as unavailable when unsupported.
+- Do not advertise the entire audio bridge as complete.
+- Keep a clearly isolated extension point for privileged/OEM hardware implementations.
+
+Do not compromise the SMS and call-control modules because of this limitation.
+
+---
+
+# 16. Android Dashboard UI
+
+Implement a clean native Android XML interface.
+
+Use ViewBinding.
+
+Support Persian and English localization.
+
+The default UI language should be Persian.
+
+Screens:
+
+### Dashboard
+
+Show:
+
+- Device status.
+- iPhone connection.
+- BLE status.
+- Local network status.
+- SMS synchronization status.
+- Contact synchronization status.
+- Call synchronization status.
+- Last synchronization timestamp.
+- Active call state.
+
+### Messages
+
+This is an Android-side diagnostics and companion status screen.
+
+Show:
+
+- SMS permission.
+- Default SMS role status.
+- Number of available messages.
+- Last received SMS metadata.
+- Outbox status.
+- Current SIM selection.
+
+Do not unnecessarily duplicate the full iOS messaging experience on Android.
+
+### Contacts
+
+Show:
+
+- Contact access.
+- Write access.
+- Number of contacts.
+- Last synchronization.
+- Sync status.
+
+### Calls
+
+Show:
+
+- Default dialer role.
+- InCallService availability.
+- Current call state.
+- Call-control capability.
+- Call history permissions.
+
+### Pairing
+
+Show:
+
+- QR pairing code.
+- Connected device.
+- Device identity.
+- Pairing status.
+- Disconnect button.
+- Revoke pairing button.
+
+### Diagnostics
+
+RecyclerView event log.
+
+Events:
+
+- Application initialized.
+- Permissions updated.
+- BLE advertising started.
+- iPhone connected.
+- Pairing successful.
+- Network connection established.
+- SMS synchronization started.
+- Contact synchronization completed.
+- New SMS received.
+- SMS sent.
+- Call event detected.
+- Call-control request processed.
+- Connection lost.
+- Synchronization resumed.
+
+Never include message bodies or full phone numbers in diagnostic logs.
+
+---
+
+# 17. Permissions and Manifest
+
+Generate a complete AndroidManifest.xml.
+
+Evaluate the following permissions individually.
+
+Base permissions:
+
+INTERNET
+ACCESS_NETWORK_STATE
+ACCESS_WIFI_STATE
+WAKE_LOCK
+FOREGROUND_SERVICE
+
+Bluetooth:
+
+BLUETOOTH
+BLUETOOTH_ADMIN
+BLUETOOTH_ADVERTISE
+BLUETOOTH_CONNECT
+
+Add BLUETOOTH_SCAN only if scanning is actually used.
+
+Phone:
+
+READ_PHONE_STATE
+CALL_PHONE
+READ_CALL_LOG
+
+Contacts:
+
+READ_CONTACTS
+WRITE_CONTACTS
+
+SMS:
+
+READ_SMS
+RECEIVE_SMS
+SEND_SMS
+
+Add any other SMS-related permission only when necessary for a documented feature and the chosen default SMS implementation.
+
+Notifications:
+
+POST_NOTIFICATIONS
+
+Android 14+ foreground-service permissions:
+
+FOREGROUND_SERVICE_CONNECTED_DEVICE
+FOREGROUND_SERVICE_PHONE_CALL, when eligible and actually used
+FOREGROUND_SERVICE_DATA_SYNC, when applicable
+FOREGROUND_SERVICE_MICROPHONE, when applicable
+
+Use maxSdkVersion where appropriate.
+
+Add uses-feature declarations without needlessly excluding devices lacking optional BLE capabilities.
+
+Include:
+
+- MainActivity.
+- BridgeForegroundService.
+- BridgeInCallService.
+- SMS BroadcastReceivers.
+- Required default-handler intent filters.
+- Required service metadata.
+- Correct exported values.
+- Notification configuration.
+
+Do not request protected permissions such as CAPTURE_AUDIO_OUTPUT.
+
+Do not request sensitive permissions at app startup.
+
+Request permissions contextually, with clear explanations.
+
+---
+
+# 18. Database
+
+Use Room for operational and synchronization state.
+
+Suggested entities:
+
+- PairedDeviceEntity
+- SyncCursorEntity
+- SyncSessionEntity
+- SmsOutboxEntity
+- PendingCommandEntity
+- ContactSyncMetadataEntity
+- CallHistorySyncMetadataEntity
+- DeviceSettingsEntity
+
+The Android system Providers remain authoritative for the actual SMS, contact and call-history records.
+
+Avoid unnecessary duplication of sensitive information.
+
+Use Android Keystore for protected encryption keys.
+
+Implement schema migrations.
+
+---
+
+# 19. Testing
+
+Build unit tests and instrumentation tests.
+
+Test:
+
+- API 21 permission behavior.
+- API 23 InCallService availability.
+- API 26 background service behavior.
+- API 29 role management.
+- API 31 Bluetooth permission model.
+- API 33 notification permission.
+- API 34 foreground-service declarations.
+- Newer Android background execution restrictions.
+
+Use real devices for BLE Peripheral and telephony testing.
+
+Validate:
+
+- Incoming SMS.
+- Multipart SMS.
+- Multi-SIM SMS.
+- SMS send success and failure.
+- SMS duplicate prevention.
+- Contact synchronization.
+- Contact updates.
+- Contact deletion.
+- Call state changes.
+- Call rejection.
+- Call answering.
+- Call termination.
+- Call history pagination.
+- BLE reconnection.
+- Wi-Fi reconnection.
+- TLS authentication.
+- Incremental synchronization.
+- Application process recreation.
+
+Emulators are not sufficient for full validation of cellular telephony and BLE behavior.
+
+---
+
+# 20. Development Phases
+
+Implement the project in these phases.
+
+### Phase A: Foundation
+
+- Gradle setup.
+- XML dashboard.
+- Permission manager.
+- Device capability detection.
+- Data models.
+- Database.
+- Event logging.
+
+### Phase B: BLE and Pairing
+
+- BLE Peripheral.
+- GATT Server.
+- Advertising.
+- QR pairing.
+- Authentication.
+- Event notifications.
+- Command channel.
+
+### Phase C: Local Network
+
+- WebSocket TLS server.
+- Network discovery.
+- iOS client authentication.
+- Connection restoration.
+
+### Phase D: SMS
+
+- SMS receiver.
+- SMS history.
+- SMS sender.
+- Multi-SIM handling.
+- Outbox.
+- Result reporting.
+- Incremental synchronization.
+
+### Phase E: Contacts
+
+- Contacts Provider.
+- Read and write contacts.
+- Contact observation.
+- Contact synchronization.
+- Conflict detection.
+
+### Phase F: Calls and Call History
+
+- Telephony state monitoring.
+- InCallService.
+- Default dialer role.
+- Call commands.
+- Call history synchronization.
+
+### Phase G: Reliability and Security
+
+- Process recreation.
+- Retry policies.
+- Data protection.
+- Security validation.
+- Battery behavior.
+- Logging cleanup.
+
+### Phase H: Audio Prototype
+
+- Capability detection.
+- Microphone test.
+- Network transport.
+- Technical feasibility report.
+
+---
+
+# 21. Mandatory Deliverables
+
+Build a complete, compilable Android Studio project.
+
+Create every required file.
+
+Deliver:
+
+1. Architecture documentation.
+2. BRIDGELINK_PROTOCOL.md.
+3. Project folder structure.
+4. Root Gradle files.
+5. App-level build.gradle.kts.
+6. AndroidManifest.xml.
+7. All Kotlin source files.
+8. XML layouts.
+9. Resource files.
+10. Permission implementation.
+11. Foreground Service.
+12. BLE GATT Server.
+13. Pairing and security.
+14. WebSocket TLS server.
+15. SMS module.
+16. Contact module.
+17. Telephony module.
+18. Call History module.
+19. Synchronization engine.
+20. Room database.
+21. Unit tests.
+22. README.
+23. Build instructions.
+24. Device testing instructions.
+
+Do not return isolated code fragments.
+
+Do not leave missing supporting classes.
+
+Do not declare a phase completed until it compiles and its relevant tests pass.
+
+If a feature depends on a restricted Android API, document the actual limitation and implement a truthful capability fallback.
+
+The final project must be usable as the Android foundation of BridgeLink.

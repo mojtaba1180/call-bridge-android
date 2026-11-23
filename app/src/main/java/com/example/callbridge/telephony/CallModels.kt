@@ -1,11 +1,21 @@
 package com.example.callbridge.telephony
 
+/**
+ * Rich BridgeLink call lifecycle states matching BRIDGELINK_PROTOCOL.md (9 states).
+ */
 enum class CallState {
     IDLE,
     RINGING,
-    OFFHOOK,
+    DIALING,
+    CONNECTING,
+    ACTIVE,
+    HOLDING,
+    DISCONNECTING,
     DISCONNECTED,
-    UNKNOWN
+    UNKNOWN;
+
+    fun isOngoing(): Boolean =
+        this == RINGING || this == DIALING || this == CONNECTING || this == ACTIVE || this == HOLDING
 }
 
 enum class CallDirection {
@@ -20,7 +30,9 @@ data class CallInfo(
     val displayName: String?,
     val state: CallState,
     val direction: CallDirection?,
-    val timestamp: Long
+    val timestamp: Long,
+    val startTime: Long? = null,
+    val subscriptionId: Int? = null
 ) {
     companion object {
         fun idle(nowMs: Long = System.currentTimeMillis()): CallInfo = CallInfo(
@@ -29,7 +41,9 @@ data class CallInfo(
             displayName = null,
             state = CallState.IDLE,
             direction = null,
-            timestamp = nowMs
+            timestamp = nowMs,
+            startTime = null,
+            subscriptionId = null
         )
     }
 }

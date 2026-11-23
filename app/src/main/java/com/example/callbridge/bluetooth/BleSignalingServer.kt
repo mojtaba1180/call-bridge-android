@@ -1,7 +1,6 @@
 package com.example.callbridge.bluetooth
 
 import android.annotation.SuppressLint
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
@@ -24,6 +23,7 @@ import com.example.callbridge.protocol.CommandValidationResult
 import com.example.callbridge.protocol.MessageSerializer
 import com.example.callbridge.protocol.PairingStatusMessage
 import com.example.callbridge.protocol.ProtocolConstants
+import com.example.callbridge.security.KeyStoreManager
 import com.example.callbridge.security.PairingManager
 import com.example.callbridge.security.SessionAuthenticator
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +37,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.json.JSONObject
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 data class BleStatusSnapshot(
@@ -54,13 +56,14 @@ data class BleStatusSnapshot(
 )
 
 /**
- * BLE Peripheral / GATT Server responsible for discovery, pairing handshake, call-state notifications,
- * and authenticated command processing for the paired iPhone Central (CoreBluetooth).
+ * BridgeLink 4-Characteristic BLE Peripheral / GATT Server (`DEVICE_INFO`, `EVENT_STREAM`,
+ * `COMMAND`, `PAIRING`) using 8-byte MTU-aware packet framing and explicit QR/PIN approval.
  */
 class BleSignalingServer(
     context: Context,
     private val pairingManager: PairingManager,
-    private val sessionAuthenticator: SessionAuthenticator
+    private val sessionAuthenticator: SessionAuthenticator,
+    private val keyStoreManager: KeyStoreManager? = null
 ) : BleGattEventHandler {
 
     private val appContext = context.applicationContext
@@ -71,20 +74,29 @@ class BleSignalingServer(
     private val reassembler = BleFrameReassembler()
     private val notifyMutex = Mutex()
     private val connectedDevices = ConcurrentHashMap<String, BluetoothDevice>()
-    private val subscribedDevices = ConcurrentHashMap<String, Boolean>()
+    private val eventSubscribedDevices = ConcurrentHashMap<String, Boolean>()
+    private val pairingSubscribedDevices = ConcurrentHashMap<String, Boolean>()
     private val deviceMtus = ConcurrentHashMap<String, Int>()
 
     private var serverScope: CoroutineScope? = null
     private var gattServer: BluetoothGattServer? = null
-    private var callStateCharacteristic: BluetoothGattCharacteristic? = null
-    private var latestCallStateJson: String = ""
+    private var eventStreamCharacteristic: BluetoothGattCharacteristic? = null
+    private var pairingCharacteristic: BluetoothGattCharacteristic? = null
+
+    private var latestEventJson: String = ""
+    private var latestPairingJson: String = "{\"status\":\"IDLE\"}"
     private var commandHandler: (suspend (CommandMessage, String) -> CommandResultMessage)? = null
+    private var localEndpointProvider: () -> Pair<String?, Int> = { null to AppConfig.DEFAULT_WSS_PORT }
 
     private val _status = MutableStateFlow(buildStatusSnapshot())
     val status: StateFlow<BleStatusSnapshot> = _status.asStateFlow()
 
     fun setCommandHandler(handler: suspend (CommandMessage, String) -> CommandResultMessage) {
         commandHandler = handler
+    }
+
+    fun setLocalEndpointProvider(provider: () -> Pair<String?, Int>) {
+        localEndpointProvider = provider
     }
 
     fun refreshStatus(): BleStatusSnapshot {
@@ -137,16 +149,14 @@ class BleSignalingServer(
             }
 
             gattServer = server
-            registerCallBridgeService(server)
+            registerBridgeLinkService(server)
 
             scope.launch {
-                advertisingManager.status.collect {
-                    refreshStatus()
-                }
+                advertisingManager.status.collect { refreshStatus() }
             }
             advertisingManager.startAdvertising(scope)
             refreshStatus()
-            Logger.i("BLE", "GATT server initialized with custom CallBridge service")
+            Logger.i("BLE", "BridgeLink 4-characteristic GATT server initialized")
             true
         } catch (se: SecurityException) {
             Logger.e("BLE", "SecurityException initializing GATT server", se)
@@ -160,12 +170,31 @@ class BleSignalingServer(
     }
 
     @SuppressLint("MissingPermission")
+    fun disconnectAllClients() {
+        val server = gattServer
+        if (server != null && BlePermissions.hasConnectPermission(appContext)) {
+            connectedDevices.values.forEach { device ->
+                runCatching { server.cancelConnection(device) }
+            }
+        }
+        connectedDevices.clear()
+        eventSubscribedDevices.clear()
+        pairingSubscribedDevices.clear()
+        deviceMtus.clear()
+        reassembler.clearAll()
+        sessionAuthenticator.invalidateSession("user requested disconnect")
+        refreshStatus()
+        Logger.i("BLE", "Disconnected all BLE clients and invalidated active session")
+    }
+
+    @SuppressLint("MissingPermission")
     fun stop() {
         advertisingManager.stopAdvertising()
 
         val server = gattServer
         gattServer = null
-        callStateCharacteristic = null
+        eventStreamCharacteristic = null
+        pairingCharacteristic = null
 
         if (server != null && BlePermissions.hasConnectPermission(appContext)) {
             connectedDevices.values.forEach { device ->
@@ -176,7 +205,8 @@ class BleSignalingServer(
         }
 
         connectedDevices.clear()
-        subscribedDevices.clear()
+        eventSubscribedDevices.clear()
+        pairingSubscribedDevices.clear()
         deviceMtus.clear()
         reassembler.clearAll()
         sessionAuthenticator.invalidateSession("BLE server stopped")
@@ -187,40 +217,56 @@ class BleSignalingServer(
         Logger.i("BLE", "GATT server stopped and cleaned up")
     }
 
-    /**
-     * Broadcasts the latest CALL_STATE payload to all subscribed BLE clients with MTU-aware framing.
-     */
     fun publishCallState(message: CallStateMessage) {
         val json = MessageSerializer.serializeCallState(message)
-        latestCallStateJson = json
+        latestEventJson = json
         val scope = serverScope ?: return
         scope.launch {
-            sendFramedNotificationToSubscribed(json.toByteArray(Charsets.UTF_8))
+            sendFramedNotificationToSubscribed(
+                characteristic = eventStreamCharacteristic,
+                subscribers = eventSubscribedDevices,
+                payload = json.toByteArray(Charsets.UTF_8)
+            )
         }
     }
 
-    /**
-     * Sends a pairing status update (e.g., after the Android user explicitly approves or rejects pairing).
-     */
+    fun publishRawEventJson(json: String) {
+        latestEventJson = json
+        val scope = serverScope ?: return
+        scope.launch {
+            sendFramedNotificationToSubscribed(
+                characteristic = eventStreamCharacteristic,
+                subscribers = eventSubscribedDevices,
+                payload = json.toByteArray(Charsets.UTF_8)
+            )
+        }
+    }
+
     fun notifyPairingStatus(statusMessage: PairingStatusMessage) {
         val json = MessageSerializer.serializePairingStatus(statusMessage)
+        latestPairingJson = json
         val scope = serverScope ?: return
         scope.launch {
-            sendFramedNotificationToSubscribed(json.toByteArray(Charsets.UTF_8))
+            sendFramedNotificationToSubscribed(
+                characteristic = pairingCharacteristic,
+                subscribers = pairingSubscribedDevices,
+                payload = json.toByteArray(Charsets.UTF_8)
+            )
+            sendFramedNotificationToSubscribed(
+                characteristic = eventStreamCharacteristic,
+                subscribers = eventSubscribedDevices,
+                payload = json.toByteArray(Charsets.UTF_8)
+            )
         }
     }
 
-    /**
-     * Runs a real diagnostic check of Bluetooth hardware, adapter state, peripheral advertising support,
-     * and GATT service registration.
-     */
     fun runSelfTest(): String {
         val snap = refreshStatus()
         val summary = buildString {
             append("BLE HW=").append(snap.bleHardwareSupported)
-            append(", BT Enabled=").append(snap.bluetoothEnabled)
-            append(", Peripheral=").append(snap.peripheralSupported)
-            append(", GATT=").append(snap.gattServerInitialized)
+            append(", BT=").append(snap.bluetoothEnabled)
+            append(", Periph=").append(snap.peripheralSupported)
+            append(", GATT(4ch)=").append(snap.gattServerInitialized)
             append(", Adv=").append(snap.advertisingStatus.name)
             append(", Clients=").append(connectedDevices.size)
         }
@@ -229,23 +275,30 @@ class BleSignalingServer(
     }
 
     @SuppressLint("MissingPermission")
-    private fun registerCallBridgeService(server: BluetoothGattServer) {
+    private fun registerBridgeLinkService(server: BluetoothGattServer) {
         val service = BluetoothGattService(
             BleConstants.SERVICE_UUID,
             BluetoothGattService.SERVICE_TYPE_PRIMARY
         )
 
-        val callStateChar = BluetoothGattCharacteristic(
-            BleConstants.CALL_STATE_CHAR_UUID,
-            BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+        val deviceInfoChar = BluetoothGattCharacteristic(
+            BleConstants.DEVICE_INFO_CHAR_UUID,
+            BluetoothGattCharacteristic.PROPERTY_READ,
             BluetoothGattCharacteristic.PERMISSION_READ
         )
 
-        val cccd = BluetoothGattDescriptor(
-            BleConstants.CCCD_UUID,
-            BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
-        )
-        callStateChar.addDescriptor(cccd)
+        val eventChar = BluetoothGattCharacteristic(
+            BleConstants.EVENT_STREAM_CHAR_UUID,
+            BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+            BluetoothGattCharacteristic.PERMISSION_READ
+        ).apply {
+            addDescriptor(
+                BluetoothGattDescriptor(
+                    BleConstants.CCCD_UUID,
+                    BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
+                )
+            )
+        }
 
         val commandChar = BluetoothGattCharacteristic(
             BleConstants.COMMAND_CHAR_UUID,
@@ -253,11 +306,46 @@ class BleSignalingServer(
             BluetoothGattCharacteristic.PERMISSION_WRITE
         )
 
-        service.addCharacteristic(callStateChar)
-        service.addCharacteristic(commandChar)
+        val pairingChar = BluetoothGattCharacteristic(
+            BleConstants.PAIRING_CHAR_UUID,
+            BluetoothGattCharacteristic.PROPERTY_READ or
+                BluetoothGattCharacteristic.PROPERTY_WRITE or
+                BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+            BluetoothGattCharacteristic.PERMISSION_READ or BluetoothGattCharacteristic.PERMISSION_WRITE
+        ).apply {
+            addDescriptor(
+                BluetoothGattDescriptor(
+                    BleConstants.CCCD_UUID,
+                    BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
+                )
+            )
+        }
 
-        callStateCharacteristic = callStateChar
+        service.addCharacteristic(deviceInfoChar)
+        service.addCharacteristic(eventChar)
+        service.addCharacteristic(commandChar)
+        service.addCharacteristic(pairingChar)
+
+        eventStreamCharacteristic = eventChar
+        pairingCharacteristic = pairingChar
         server.addService(service)
+    }
+
+    private fun buildDeviceInfoJson(): String {
+        val (host, port) = localEndpointProvider()
+        val certPin = runCatching { keyStoreManager?.getServerCertificateFingerprint() }.getOrNull()
+        return JSONObject().apply {
+            put("v", AppConfig.PROTOCOL_VERSION)
+            put("app", "BridgeLink")
+            put("deviceId", pairingManager.localDeviceId)
+            put("deviceName", pairingManager.localDeviceName)
+            put("wssHost", host ?: JSONObject.NULL)
+            put("wssPort", port)
+            put("wssPath", AppConfig.DEFAULT_WSS_PATH)
+            put("certSha256", certPin ?: JSONObject.NULL)
+            put("smsMode", "CREATOR_COMPLIANT_HANDOFF")
+            put("callHistoryMode", "BRIDGELINK_OBSERVED_ONLY")
+        }.toString()
     }
 
     @SuppressLint("MissingPermission")
@@ -275,7 +363,8 @@ class BleSignalingServer(
             }
             BluetoothProfile.STATE_DISCONNECTED -> {
                 connectedDevices.remove(address)
-                subscribedDevices.remove(address)
+                eventSubscribedDevices.remove(address)
+                pairingSubscribedDevices.remove(address)
                 deviceMtus.remove(address)
                 reassembler.clearDevice(address)
                 if (connectedDevices.isEmpty()) {
@@ -289,7 +378,7 @@ class BleSignalingServer(
 
     override fun onServiceAddedResult(status: Int, service: BluetoothGattService?) {
         if (status == BluetoothGatt.GATT_SUCCESS) {
-            Logger.i("BLE", "GATT service registered: ${service?.uuid}")
+            Logger.i("BLE", "BridgeLink GATT service registered: ${service?.uuid}")
         } else {
             Logger.e("BLE", "Failed to register GATT service (status=$status)")
         }
@@ -306,8 +395,14 @@ class BleSignalingServer(
         val server = gattServer ?: return
         if (!BlePermissions.hasConnectPermission(appContext)) return
 
-        if (characteristic.uuid == BleConstants.CALL_STATE_CHAR_UUID) {
-            val payload = latestCallStateJson.toByteArray(Charsets.UTF_8)
+        val payload: ByteArray? = when (characteristic.uuid) {
+            BleConstants.DEVICE_INFO_CHAR_UUID -> buildDeviceInfoJson().toByteArray(Charsets.UTF_8)
+            BleConstants.EVENT_STREAM_CHAR_UUID -> latestEventJson.toByteArray(Charsets.UTF_8)
+            BleConstants.PAIRING_CHAR_UUID -> latestPairingJson.toByteArray(Charsets.UTF_8)
+            else -> null
+        }
+
+        if (payload != null) {
             val slice = if (offset >= payload.size) ByteArray(0) else payload.copyOfRange(offset, payload.size)
             runCatching {
                 server.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, slice)
@@ -332,7 +427,9 @@ class BleSignalingServer(
         val server = gattServer ?: return
         if (!BlePermissions.hasConnectPermission(appContext)) return
 
-        if (characteristic.uuid != BleConstants.COMMAND_CHAR_UUID) {
+        val isCommandChar = characteristic.uuid == BleConstants.COMMAND_CHAR_UUID
+        val isPairingChar = characteristic.uuid == BleConstants.PAIRING_CHAR_UUID
+        if (!isCommandChar && !isPairingChar) {
             if (responseNeeded) {
                 runCatching {
                     server.sendResponse(device, requestId, BluetoothGatt.GATT_WRITE_NOT_PERMITTED, offset, null)
@@ -350,10 +447,10 @@ class BleSignalingServer(
         val packet = value ?: return
         val address = device.address ?: "unknown"
         val assembled = reassembler.onPacketReceived(address, packet) ?: return
-
         val rawJson = assembled.toString(Charsets.UTF_8)
+
         serverScope?.launch {
-            handleIncomingCommandJson(device, address, rawJson)
+            handleIncomingCommandJson(device, address, rawJson, responseOnPairing = isPairingChar)
         }
     }
 
@@ -368,7 +465,11 @@ class BleSignalingServer(
         if (!BlePermissions.hasConnectPermission(appContext)) return
 
         if (descriptor.uuid == BleConstants.CCCD_UUID) {
-            val enabled = subscribedDevices[device.address] == true
+            val parentUuid = descriptor.characteristic?.uuid
+            val enabled = when (parentUuid) {
+                BleConstants.PAIRING_CHAR_UUID -> pairingSubscribedDevices[device.address] == true
+                else -> eventSubscribedDevices[device.address] == true
+            }
             val value = if (enabled) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
             else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
             runCatching {
@@ -398,18 +499,28 @@ class BleSignalingServer(
             val enabled = value != null &&
                 (value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE) ||
                     value.contentEquals(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE))
-            subscribedDevices[device.address ?: "unknown"] = enabled
+            val addr = device.address ?: "unknown"
+            val parentUuid: UUID? = descriptor.characteristic?.uuid
+            if (parentUuid == BleConstants.PAIRING_CHAR_UUID) {
+                pairingSubscribedDevices[addr] = enabled
+            } else {
+                eventSubscribedDevices[addr] = enabled
+            }
             if (responseNeeded) {
                 runCatching {
                     server.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, null)
                 }
             }
-            Logger.i("BLE", "Client ${if (enabled) "subscribed to" else "unsubscribed from"} CALL_STATE notifications")
+            Logger.i("BLE", "Client ${if (enabled) "subscribed" else "unsubscribed"} (${parentUuid?.toString()?.take(8)})")
             refreshStatus()
 
-            if (enabled && latestCallStateJson.isNotEmpty()) {
+            if (enabled && parentUuid == BleConstants.EVENT_STREAM_CHAR_UUID && latestEventJson.isNotEmpty()) {
                 serverScope?.launch {
-                    sendFramedNotificationToDevice(device, latestCallStateJson.toByteArray(Charsets.UTF_8))
+                    sendFramedNotificationToDevice(
+                        device = device,
+                        characteristic = eventStreamCharacteristic,
+                        payload = latestEventJson.toByteArray(Charsets.UTF_8)
+                    )
                 }
             }
         } else if (responseNeeded) {
@@ -432,7 +543,12 @@ class BleSignalingServer(
         }
     }
 
-    private suspend fun handleIncomingCommandJson(device: BluetoothDevice, address: String, rawJson: String) {
+    private suspend fun handleIncomingCommandJson(
+        device: BluetoothDevice,
+        address: String,
+        rawJson: String,
+        responseOnPairing: Boolean
+    ) {
         val validation = MessageSerializer.parseAndValidateCommand(rawJson)
         val result: CommandResultMessage = when (validation) {
             is CommandValidationResult.Invalid -> {
@@ -450,12 +566,17 @@ class BleSignalingServer(
         }
 
         val responseBytes = MessageSerializer.serializeCommandResult(result).toByteArray(Charsets.UTF_8)
-        sendFramedNotificationToDevice(device, responseBytes)
+        val targetChar = if (responseOnPairing && pairingSubscribedDevices[address] == true) {
+            pairingCharacteristic
+        } else {
+            eventStreamCharacteristic
+        }
+        sendFramedNotificationToDevice(device, targetChar, responseBytes)
         refreshStatus()
     }
 
     private suspend fun processValidatedCommand(command: CommandMessage, address: String): CommandResultMessage {
-        Logger.i("BLE", "Command received: ${command.cmd} (id=${command.id})")
+        Logger.i("BLE", "BLE command received: ${command.cmd} (id=${command.id})")
 
         return when (command.cmd) {
             ProtocolConstants.CMD_PING -> CommandResultMessage(
@@ -471,13 +592,27 @@ class BleSignalingServer(
                     message = "Missing deviceId",
                     errorCode = "MISSING_DEVICE_ID"
                 )
-                val req = pairingManager.registerIncomingPairRequest(deviceId, command.deviceName, address)
-                CommandResultMessage(
-                    id = command.id,
-                    success = true,
-                    message = "Pairing request pending user approval on Android (enter displayed 6-digit PIN if prompted)",
-                    capabilityStatus = "AWAITING_USER_APPROVAL:${req.deviceId}"
+                val req = pairingManager.registerIncomingPairRequest(
+                    deviceId = deviceId,
+                    deviceName = command.deviceName,
+                    bleAddress = address,
+                    suppliedToken = command.pairingToken
                 )
+                if (req == null) {
+                    CommandResultMessage(
+                        id = command.id,
+                        success = false,
+                        message = "Pairing QR token invalid or expired",
+                        errorCode = "INVALID_PAIRING_TOKEN"
+                    )
+                } else {
+                    CommandResultMessage(
+                        id = command.id,
+                        success = true,
+                        message = "Pairing request pending explicit Android user approval",
+                        capabilityStatus = "AWAITING_USER_APPROVAL:${req.deviceId}"
+                    )
+                }
             }
 
             ProtocolConstants.CMD_PAIR_VERIFY -> {
@@ -524,26 +659,14 @@ class BleSignalingServer(
             }
 
             else -> {
-                if (command.cmd in ProtocolConstants.SENSITIVE_COMMANDS &&
-                    !sessionAuthenticator.isAuthorized(command.sessionToken, address)
-                ) {
-                    Logger.w("Security", "Blocked unauthorized sensitive command ${command.cmd} from $address")
-                    return CommandResultMessage(
-                        id = command.id,
-                        success = false,
-                        message = "Authentication required before executing ${command.cmd}",
-                        errorCode = "UNAUTHORIZED"
-                    )
-                }
-
                 val handler = commandHandler
                 if (handler != null) {
-                    handler(command, address)
+                    handler(command, "BLE:$address")
                 } else {
                     CommandResultMessage(
                         id = command.id,
                         success = false,
-                        message = "Bridge command processor unavailable",
+                        message = "Bridge command router unavailable",
                         errorCode = "HANDLER_UNAVAILABLE"
                     )
                 }
@@ -551,21 +674,29 @@ class BleSignalingServer(
         }
     }
 
-    private suspend fun sendFramedNotificationToSubscribed(payload: ByteArray) {
+    private suspend fun sendFramedNotificationToSubscribed(
+        characteristic: BluetoothGattCharacteristic?,
+        subscribers: ConcurrentHashMap<String, Boolean>,
+        payload: ByteArray
+    ) {
+        if (characteristic == null) return
         val targets = connectedDevices.entries
-            .filter { (addr, _) -> subscribedDevices[addr] == true }
+            .filter { (addr, _) -> subscribers[addr] == true }
             .map { it.value }
         for (device in targets) {
-            sendFramedNotificationToDevice(device, payload)
+            sendFramedNotificationToDevice(device, characteristic, payload)
         }
     }
 
     @SuppressLint("MissingPermission")
     @Suppress("DEPRECATION")
-    private suspend fun sendFramedNotificationToDevice(device: BluetoothDevice, payload: ByteArray) {
+    private suspend fun sendFramedNotificationToDevice(
+        device: BluetoothDevice,
+        characteristic: BluetoothGattCharacteristic?,
+        payload: ByteArray
+    ) {
         val server = gattServer ?: return
-        val characteristic = callStateCharacteristic ?: return
-        if (!BlePermissions.hasConnectPermission(appContext)) return
+        if (characteristic == null || !BlePermissions.hasConnectPermission(appContext)) return
 
         val address = device.address ?: return
         val mtu = deviceMtus[address] ?: AppConfig.BLE_DEFAULT_MTU
@@ -581,7 +712,7 @@ class BleSignalingServer(
                         server.notifyCharacteristicChanged(device, characteristic, false)
                     }
                     if (frames.size > 1) {
-                        delay(15L) // Pace multi-frame bursts to avoid GATT buffer overflow on legacy stacks
+                        delay(15L)
                     }
                 } catch (se: SecurityException) {
                     Logger.e("BLE", "SecurityException sending notification", se)
@@ -606,7 +737,8 @@ class BleSignalingServer(
             runCatching { firstClient.name }.getOrNull()
         } else null
         val mtu = firstAddr?.let { deviceMtus[it] } ?: AppConfig.BLE_DEFAULT_MTU
-        val subscribed = firstAddr != null && subscribedDevices[firstAddr] == true
+        val subscribed = firstAddr != null &&
+            (eventSubscribedDevices[firstAddr] == true || pairingSubscribedDevices[firstAddr] == true)
 
         return BleStatusSnapshot(
             bleHardwareSupported = bleHw,

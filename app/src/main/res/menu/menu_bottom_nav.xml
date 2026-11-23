@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_dashboard"
+        android:icon="@drawable/ic_dashboard_home"
+        android:title="@string/nav_dashboard" />
+    <item
+        android:id="@+id/nav_messages"
+        android:icon="@drawable/ic_messages_sms"
+        android:title="@string/nav_messages" />
+    <item
+        android:id="@+id/nav_contacts"
+        android:icon="@drawable/ic_contacts_sync"
+        android:title="@string/nav_contacts" />
+    <item
+        android:id="@+id/nav_calls"
+        android:icon="@drawable/ic_phone_call"
+        android:title="@string/nav_calls" />
+    <item
+        android:id="@+id/nav_pairing"
+        android:icon="@drawable/ic_qr_pairing"
+        android:title="@string/nav_pairing" />
+</menu>

@@ -9,6 +9,8 @@ import android.os.Build
 import android.os.Bundle
 import android.telecom.TelecomManager
 import androidx.core.content.ContextCompat
+import com.example.callbridge.callhistory.CallHistoryRepository
+import com.example.callbridge.callhistory.ObservedCallType
 import com.example.callbridge.core.Logger
 import com.example.callbridge.protocol.MessageSerializer
 import com.example.callbridge.utils.VersionUtils
@@ -26,16 +28,13 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 
 /**
- * Coordinates cellular call state monitoring and supported Telecom call control operations.
- *
- * Strictly honest about platform capabilities:
- * - Never fakes success when InCallService / ROLE_DIALER is missing.
- * - Never uses Accessibility Services, undocumented reflection, or hidden APIs.
- * - Combines TelephonyManager state listener with richer InCallService telemetry when available.
+ * Coordinates cellular call state monitoring, supported Telecom call control operations,
+ * and automatic Play Creator-compliant recording of observed calls into [CallHistoryRepository].
  */
 class CallManager(
     context: Context,
-    private val defaultDialerManager: DefaultDialerManager
+    private val defaultDialerManager: DefaultDialerManager,
+    private val callHistoryRepository: CallHistoryRepository? = null
 ) {
     private val appContext = context.applicationContext
 
@@ -49,6 +48,8 @@ class CallManager(
     private var inCallCollectorJob: Job? = null
     private var stateListener: CallStateListener? = null
     private var isMonitoring = false
+    private var lastRecordedCallId: String? = null
+    private var sawActiveForCurrentCall = false
 
     fun startMonitoring() {
         _capability.value = evaluateCapability()
@@ -66,8 +67,15 @@ class CallManager(
         inCallCollectorJob = managerScope.launch {
             InCallServiceBridge.activeCallInfo.collectLatest { inCall ->
                 if (inCall != null) {
+                    val prev = _callInfo.value
+                    if (inCall.state == CallState.ACTIVE || inCall.state == CallState.HOLDING) {
+                        sawActiveForCurrentCall = true
+                    }
                     _callInfo.value = inCall
                     logCallTransition(inCall)
+                    if (inCall.state == CallState.DISCONNECTED) {
+                        persistCompletedCallIfNeeded(prev, inCall)
+                    }
                 }
             }
         }
@@ -114,15 +122,20 @@ class CallManager(
     ): CallInfo {
         val previous = _callInfo.value
 
-        // If InCallService is bound and actively tracking this call, prefer its richer metadata
-        // unless TelephonyManager reports IDLE to clear stale states.
         if (InCallServiceBridge.isServiceBound.value && newState != CallState.IDLE) {
             return previous
         }
 
         val updated = computeNextCallInfo(previous, newState, bestEffortNumber, nowMs)
+        if (updated.state == CallState.ACTIVE || updated.state == CallState.HOLDING) {
+            sawActiveForCurrentCall = true
+        }
         _callInfo.value = updated
         logCallTransition(updated)
+
+        if (updated.state == CallState.DISCONNECTED) {
+            persistCompletedCallIfNeeded(previous, updated)
+        }
         return updated
     }
 
@@ -140,7 +153,7 @@ class CallManager(
             return@withContext CallOperationResult(
                 success = false,
                 errorCode = "DEFAULT_DIALER_REQUIRED",
-                errorMessage = "Set CallBridge as the default dialer to answer calls via InCallService.",
+                errorMessage = "Set BridgeLink as the default dialer to answer calls via InCallService.",
                 capabilityStatus = cap
             )
         }
@@ -170,7 +183,7 @@ class CallManager(
             return@withContext CallOperationResult(
                 success = false,
                 errorCode = "DEFAULT_DIALER_REQUIRED",
-                errorMessage = "Set CallBridge as the default dialer to reject calls via InCallService.",
+                errorMessage = "Set BridgeLink as the default dialer to reject calls via InCallService.",
                 capabilityStatus = cap
             )
         }
@@ -200,7 +213,7 @@ class CallManager(
             return@withContext CallOperationResult(
                 success = false,
                 errorCode = "DEFAULT_DIALER_REQUIRED",
-                errorMessage = "Set CallBridge as the default dialer to end calls via InCallService.",
+                errorMessage = "Set BridgeLink as the default dialer to end calls via InCallService.",
                 capabilityStatus = cap
             )
         }
@@ -216,87 +229,122 @@ class CallManager(
         )
     }
 
-    /**
-     * Initiates an outgoing cellular call using TelecomManager.placeCall (API 23+ with CALL_PHONE)
-     * or returns a clear error/confirmation requirement without bypassing background activity limits.
-     */
-    suspend fun dialNumber(number: String): CallOperationResult = withContext(Dispatchers.Main.immediate) {
-        val cap = refreshCapability()
-        val sanitized = number.trim()
-        if (!MessageSerializer.isValidDialNumber(sanitized)) {
-            return@withContext CallOperationResult(
-                success = false,
-                errorCode = "INVALID_PHONE_NUMBER",
-                errorMessage = "Invalid phone number format.",
-                capabilityStatus = cap
-            )
-        }
-
-        val hasCallPhone = ContextCompat.checkSelfPermission(
-            appContext,
-            Manifest.permission.CALL_PHONE
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (!hasCallPhone) {
-            return@withContext CallOperationResult(
-                success = false,
-                errorCode = "CALL_PHONE_PERMISSION_MISSING",
-                errorMessage = "CALL_PHONE permission is required to place outgoing calls.",
-                capabilityStatus = cap
-            )
-        }
-
-        val uri = Uri.fromParts("tel", sanitized, null)
-        return@withContext try {
-            if (VersionUtils.isAtLeastM() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                val telecomManager = appContext.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
-                if (telecomManager != null) {
-                    telecomManager.placeCall(uri, Bundle())
-                    Logger.i("Telephony", "Outgoing call requested via TelecomManager to ${Logger.maskPhoneNumber(sanitized)}")
-                    CallOperationResult(
-                        success = true,
-                        errorCode = null,
-                        errorMessage = "Outgoing call placed via TelecomManager",
-                        capabilityStatus = cap
-                    )
-                } else {
-                    CallOperationResult(
-                        success = false,
-                        errorCode = "TELECOM_UNAVAILABLE",
-                        errorMessage = "TelecomManager is unavailable on this device.",
-                        capabilityStatus = cap
-                    )
-                }
-            } else {
-                // API 21-22 fallback using ACTION_CALL when CALL_PHONE permission is granted
-                val intent = Intent(Intent.ACTION_CALL, uri).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                appContext.startActivity(intent)
-                Logger.i("Telephony", "Outgoing call started (API 21-22) to ${Logger.maskPhoneNumber(sanitized)}")
-                CallOperationResult(
-                    success = true,
-                    errorCode = null,
-                    errorMessage = "Outgoing call initiated",
+    suspend fun dialNumber(number: String, subscriptionId: Int? = null): CallOperationResult =
+        withContext(Dispatchers.Main.immediate) {
+            val cap = refreshCapability()
+            val sanitized = number.trim()
+            if (!MessageSerializer.isValidDialNumber(sanitized)) {
+                return@withContext CallOperationResult(
+                    success = false,
+                    errorCode = "INVALID_PHONE_NUMBER",
+                    errorMessage = "Invalid phone number format.",
                     capabilityStatus = cap
                 )
             }
-        } catch (se: SecurityException) {
-            Logger.e("Telephony", "SecurityException placing outgoing call", se)
-            CallOperationResult(
-                success = false,
-                errorCode = "SECURITY_EXCEPTION",
-                errorMessage = "System denied call placement: ${se.message}",
-                capabilityStatus = cap
-            )
-        } catch (t: Throwable) {
-            Logger.e("Telephony", "Error placing outgoing call", t)
-            CallOperationResult(
-                success = false,
-                errorCode = "DIAL_FAILED",
-                errorMessage = "Failed to initiate outgoing call: ${t.message}",
-                capabilityStatus = cap
-            )
+
+            val hasCallPhone = ContextCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.CALL_PHONE
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!hasCallPhone) {
+                return@withContext CallOperationResult(
+                    success = false,
+                    errorCode = "CALL_PHONE_PERMISSION_MISSING",
+                    errorMessage = "CALL_PHONE permission is required to place outgoing calls.",
+                    capabilityStatus = cap
+                )
+            }
+
+            val uri = Uri.fromParts("tel", sanitized, null)
+            return@withContext try {
+                if (VersionUtils.isAtLeastM() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val telecomManager = appContext.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
+                    if (telecomManager != null) {
+                        val extras = Bundle().apply {
+                            if (subscriptionId != null) {
+                                putInt("android.telephony.extra.SUBSCRIPTION_INDEX", subscriptionId)
+                            }
+                        }
+                        telecomManager.placeCall(uri, extras)
+                        Logger.i("Telephony", "Outgoing call requested via TelecomManager to ${Logger.maskPhoneNumber(sanitized)}")
+                        CallOperationResult(
+                            success = true,
+                            errorCode = null,
+                            errorMessage = "Outgoing call placed via TelecomManager",
+                            capabilityStatus = cap
+                        )
+                    } else {
+                        CallOperationResult(
+                            success = false,
+                            errorCode = "TELECOM_UNAVAILABLE",
+                            errorMessage = "TelecomManager is unavailable on this device.",
+                            capabilityStatus = cap
+                        )
+                    }
+                } else {
+                    val intent = Intent(Intent.ACTION_CALL, uri).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    appContext.startActivity(intent)
+                    Logger.i("Telephony", "Outgoing call started (API 21-22) to ${Logger.maskPhoneNumber(sanitized)}")
+                    CallOperationResult(
+                        success = true,
+                        errorCode = null,
+                        errorMessage = "Outgoing call initiated",
+                        capabilityStatus = cap
+                    )
+                }
+            } catch (se: SecurityException) {
+                Logger.e("Telephony", "SecurityException placing outgoing call", se)
+                CallOperationResult(
+                    success = false,
+                    errorCode = "SECURITY_EXCEPTION",
+                    errorMessage = "System denied call placement: ${se.message}",
+                    capabilityStatus = cap
+                )
+            } catch (t: Throwable) {
+                Logger.e("Telephony", "Error placing outgoing call", t)
+                CallOperationResult(
+                    success = false,
+                    errorCode = "DIAL_FAILED",
+                    errorMessage = "Failed to initiate outgoing call: ${t.message}",
+                    capabilityStatus = cap
+                )
+            }
+        }
+
+    private fun persistCompletedCallIfNeeded(previous: CallInfo, finished: CallInfo) {
+        val repo = callHistoryRepository ?: return
+        val callId = finished.callId ?: previous.callId ?: "call_${UUID.randomUUID().toString().take(8)}"
+        if (callId == lastRecordedCallId) return
+        lastRecordedCallId = callId
+
+        val startMs = finished.startTime ?: previous.startTime ?: previous.timestamp
+        val durationSec = if (sawActiveForCurrentCall) {
+            ((finished.timestamp - startMs) / 1000L).coerceAtLeast(0L)
+        } else 0L
+
+        val callType = when (finished.direction ?: previous.direction) {
+            CallDirection.INCOMING -> if (sawActiveForCurrentCall) ObservedCallType.INCOMING else ObservedCallType.MISSED
+            CallDirection.OUTGOING -> ObservedCallType.OUTGOING
+            else -> ObservedCallType.UNKNOWN
+        }
+        sawActiveForCurrentCall = false
+
+        val recordScope = scope ?: CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        recordScope.launch(Dispatchers.IO) {
+            runCatching {
+                repo.recordObservedCall(
+                    callId = callId,
+                    rawPhoneNumber = finished.phoneNumber ?: previous.phoneNumber,
+                    displayName = finished.displayName ?: previous.displayName,
+                    callType = callType,
+                    startedAtMs = startMs,
+                    durationSec = durationSec,
+                    subscriptionId = finished.subscriptionId ?: previous.subscriptionId
+                )
+            }
         }
     }
 
@@ -304,7 +352,11 @@ class CallManager(
         val masked = Logger.maskPhoneNumber(info.phoneNumber)
         when (info.state) {
             CallState.RINGING -> Logger.i("Telephony", "Incoming call detected ($masked)")
-            CallState.OFFHOOK -> Logger.i("Telephony", "Call active (${info.direction ?: CallDirection.UNKNOWN})")
+            CallState.DIALING -> Logger.i("Telephony", "Dialing outgoing call ($masked)")
+            CallState.CONNECTING -> Logger.i("Telephony", "Call connecting ($masked)")
+            CallState.ACTIVE -> Logger.i("Telephony", "Call active (${info.direction ?: CallDirection.UNKNOWN})")
+            CallState.HOLDING -> Logger.i("Telephony", "Call on hold")
+            CallState.DISCONNECTING -> Logger.i("Telephony", "Call disconnecting")
             CallState.DISCONNECTED -> Logger.i("Telephony", "Call disconnected")
             CallState.IDLE -> Logger.i("Telephony", "Call state idle")
             CallState.UNKNOWN -> Logger.w("Telephony", "Call state unknown")
@@ -325,34 +377,62 @@ class CallManager(
                     displayName = previous.displayName,
                     state = CallState.RINGING,
                     direction = CallDirection.INCOMING,
-                    timestamp = nowMs
+                    timestamp = nowMs,
+                    startTime = previous.startTime ?: nowMs,
+                    subscriptionId = previous.subscriptionId
                 )
 
-                CallState.OFFHOOK -> {
+                CallState.DIALING, CallState.CONNECTING -> CallInfo(
+                    callId = previous.callId ?: "call_${UUID.randomUUID().toString().take(8)}",
+                    phoneNumber = bestEffortNumber ?: previous.phoneNumber,
+                    displayName = previous.displayName,
+                    state = newState,
+                    direction = previous.direction ?: CallDirection.OUTGOING,
+                    timestamp = nowMs,
+                    startTime = previous.startTime ?: nowMs,
+                    subscriptionId = previous.subscriptionId
+                )
+
+                CallState.ACTIVE, CallState.HOLDING -> {
                     val direction = when {
                         previous.state == CallState.RINGING -> CallDirection.INCOMING
-                        previous.direction != null && previous.state == CallState.OFFHOOK -> previous.direction
+                        previous.direction != null && previous.state.isOngoing() -> previous.direction
                         else -> CallDirection.OUTGOING
                     }
                     CallInfo(
                         callId = previous.callId ?: "call_${UUID.randomUUID().toString().take(8)}",
                         phoneNumber = bestEffortNumber ?: previous.phoneNumber,
                         displayName = previous.displayName,
-                        state = CallState.OFFHOOK,
+                        state = newState,
                         direction = direction,
-                        timestamp = nowMs
+                        timestamp = nowMs,
+                        startTime = previous.startTime ?: nowMs,
+                        subscriptionId = previous.subscriptionId
                     )
                 }
 
+                CallState.DISCONNECTING -> CallInfo(
+                    callId = previous.callId,
+                    phoneNumber = previous.phoneNumber,
+                    displayName = previous.displayName,
+                    state = CallState.DISCONNECTING,
+                    direction = previous.direction,
+                    timestamp = nowMs,
+                    startTime = previous.startTime,
+                    subscriptionId = previous.subscriptionId
+                )
+
                 CallState.IDLE -> {
-                    if (previous.state == CallState.RINGING || previous.state == CallState.OFFHOOK) {
+                    if (previous.state.isOngoing() || previous.state == CallState.DISCONNECTING) {
                         CallInfo(
                             callId = previous.callId,
                             phoneNumber = previous.phoneNumber,
                             displayName = previous.displayName,
                             state = CallState.DISCONNECTED,
                             direction = previous.direction,
-                            timestamp = nowMs
+                            timestamp = nowMs,
+                            startTime = previous.startTime,
+                            subscriptionId = previous.subscriptionId
                         )
                     } else {
                         CallInfo.idle(nowMs)
@@ -365,7 +445,9 @@ class CallManager(
                     displayName = previous.displayName,
                     state = CallState.DISCONNECTED,
                     direction = previous.direction,
-                    timestamp = nowMs
+                    timestamp = nowMs,
+                    startTime = previous.startTime,
+                    subscriptionId = previous.subscriptionId
                 )
 
                 CallState.UNKNOWN -> CallInfo(
@@ -374,7 +456,9 @@ class CallManager(
                     displayName = previous.displayName,
                     state = CallState.UNKNOWN,
                     direction = CallDirection.UNKNOWN,
-                    timestamp = nowMs
+                    timestamp = nowMs,
+                    startTime = previous.startTime,
+                    subscriptionId = previous.subscriptionId
                 )
             }
         }

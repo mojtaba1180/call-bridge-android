@@ -18,9 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Central API-aware permission and role evaluator.
- * Never requests permissions automatically at launch; exposes exact runtime permission arrays
- * so UI can request only the permissions required by the feature the user activates.
+ * Central API-aware permission and role evaluator (Play Creator Program compliant).
+ * Never requests permissions at launch and never declares prohibited SMS/CallLog permissions.
  */
 class PermissionManager(
     private val context: Context,
@@ -68,6 +67,18 @@ class PermissionManager(
             GrantState.DENIED
         }
 
+        val contactsReadState = if (hasPermission(Manifest.permission.READ_CONTACTS)) {
+            GrantState.GRANTED
+        } else {
+            GrantState.DENIED
+        }
+
+        val contactsWriteState = if (hasPermission(Manifest.permission.WRITE_CONTACTS)) {
+            GrantState.GRANTED
+        } else {
+            GrantState.DENIED
+        }
+
         val dialerState = when {
             !VersionUtils.isAtLeastM() -> GrantState.UNSUPPORTED_ON_API
             defaultDialerManager.isDefaultDialer() -> GrantState.GRANTED
@@ -86,8 +97,12 @@ class PermissionManager(
             notifications = notifState,
             microphone = micState,
             callPhone = callPhoneState,
+            contactsRead = contactsReadState,
+            contactsWrite = contactsWriteState,
             defaultDialerRole = dialerState,
-            batteryOptimizationIgnored = batteryState
+            batteryOptimizationIgnored = batteryState,
+            smsBackgroundAccess = GrantState.RESTRICTED_PLAY_CREATOR_MODE,
+            callLogProviderAccess = GrantState.RESTRICTED_PLAY_CREATOR_MODE
         )
     }
 
@@ -100,6 +115,10 @@ class PermissionManager(
             } else emptyArray()
             PermissionCategory.MICROPHONE -> arrayOf(Manifest.permission.RECORD_AUDIO)
             PermissionCategory.CALL_PHONE -> arrayOf(Manifest.permission.CALL_PHONE)
+            PermissionCategory.CONTACTS -> arrayOf(
+                Manifest.permission.READ_CONTACTS,
+                Manifest.permission.WRITE_CONTACTS
+            )
             PermissionCategory.DEFAULT_DIALER_ROLE,
             PermissionCategory.BATTERY_OPTIMIZATION -> emptyArray()
         }
@@ -117,10 +136,6 @@ class PermissionManager(
         } else true
     }
 
-    /**
-     * Builds the optional user-initiated system intent to request ignoring battery optimizations.
-     * Never triggered automatically at install time.
-     */
     @SuppressLint("BatteryLife")
     fun createBatteryOptimizationIntent(): Intent? {
         if (!VersionUtils.isAtLeastM()) return null

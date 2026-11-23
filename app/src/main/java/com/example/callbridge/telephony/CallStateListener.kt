@@ -126,7 +126,7 @@ class CallStateListener(
         fun mapTelephonyState(state: Int): CallState = when (state) {
             TelephonyManager.CALL_STATE_IDLE -> CallState.IDLE
             TelephonyManager.CALL_STATE_RINGING -> CallState.RINGING
-            TelephonyManager.CALL_STATE_OFFHOOK -> CallState.OFFHOOK
+            TelephonyManager.CALL_STATE_OFFHOOK -> CallState.ACTIVE
             else -> CallState.UNKNOWN
         }
     }

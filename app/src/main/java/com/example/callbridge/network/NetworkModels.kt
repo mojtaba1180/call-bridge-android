@@ -32,9 +32,15 @@ data class NetworkStatusSnapshot(
     val transportType: NetworkTransportType,
     val interfaceName: String?,
     val localIp: String?,
-    val controlPort: Int,
+    val wssPort: Int,
+    val wssPath: String,
     val devAudioUdpPort: Int,
+    val certSha256Fingerprint: String?,
+    val nsdRegistered: Boolean,
     val serverState: ServerRunState,
     val connectedClient: ConnectedNetworkClient?,
     val lastError: String?
-)
+) {
+    val wssEndpointUrl: String?
+        get() = localIp?.let { "wss://$it:$wssPort$wssPath" }
+}

@@ -1,6 +1,6 @@
 {
-  "name": "CallBridge",
-  "description": "Android Companion cellular-to-iPhone call bridge with BLE GATT signaling, Telecom InCallService control, local network server, and modular audio test bridge.",
+  "name": "BridgeLink",
+  "description": "BridgeLink Android Companion: Play Creator-compliant cellular call control, bidirectional Contacts sync, BLE GATT signaling, TLS WebSocket + NSD local sync, QR Keystore pairing, Room metadata persistence, and isolated audio testing.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

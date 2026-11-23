@@ -17,10 +17,10 @@ import com.example.callbridge.core.Logger
 import com.example.callbridge.protocol.CallStateMessage
 import com.example.callbridge.protocol.CommandMessage
 import com.example.callbridge.protocol.CommandResultMessage
-import com.example.callbridge.protocol.ProtocolConstants
+import com.example.callbridge.protocol.CommandRouter
+import com.example.callbridge.sync.SyncRunState
 import com.example.callbridge.telephony.CallControlCapability
 import com.example.callbridge.telephony.CallInfo
-import com.example.callbridge.telephony.CallState
 import com.example.callbridge.utils.VersionUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 enum class BridgeServiceState {
     STOPPED,
@@ -40,19 +41,19 @@ enum class BridgeServiceState {
 }
 
 /**
- * Persistent Foreground Service orchestrating BLE GATT Peripheral signaling, Telephony call-state
- * monitoring, local Wi-Fi/Hotspot control server, and conditional Android 14 foreground service types.
- *
- * Foreground service types are enabled ONLY when their corresponding Android 14 prerequisites are met:
- * - connectedDevice: when Bluetooth peripheral permissions are granted
- * - microphone: ONLY when user explicitly triggers microphone test from a foreground UI flow & RECORD_AUDIO granted
- * - phoneCall: ONLY when the app holds ROLE_DIALER (default dialer)
+ * Persistent BridgeLink Foreground Service orchestrating:
+ * - 4-Characteristic BLE GATT Peripheral (`BleSignalingServer`)
+ * - Local TLS WebSocket Server (`wss://<IP>:8443/bridge/v1`) & Android NSD (`_bridgelink._tcp.`)
+ * - Telephony 9-state monitoring & Telecom InCallService
+ * - Contacts ContentObserver + Paginated `SyncEngine`
+ * - Conditional Android 14+ foreground service types (`connectedDevice`, `dataSync`, `microphone`, `phoneCall`)
  */
 class BridgeForegroundService : Service() {
 
     private lateinit var container: AppContainer
     private lateinit var notificationManager: BridgeNotificationManager
     private lateinit var wakeLockManager: WakeLockManager
+    private lateinit var commandRouter: CommandRouter
 
     private var serviceScope: CoroutineScope? = null
     private var isStarted = false
@@ -64,6 +65,24 @@ class BridgeForegroundService : Service() {
         notificationManager = BridgeNotificationManager(this)
         wakeLockManager = WakeLockManager(this)
         notificationManager.ensureChannelCreated()
+
+        commandRouter = CommandRouter(
+            sessionAuthenticator = container.sessionAuthenticator,
+            callManager = container.callManager,
+            contactsRepository = container.contactsRepository,
+            smsBridgeManager = container.smsBridgeManager,
+            syncEngine = container.syncEngine,
+            pendingCommandDao = container.database.pendingCommandDao(),
+            publishStatusCallback = {
+                broadcastCurrentCallState(
+                    container.callManager.callInfo.value,
+                    container.localAudioBridge.capabilityReport.value.cellularAudioCapability
+                )
+            },
+            syncPagePublisher = { pageJson ->
+                container.localNetworkManager.sendRawFrame(pageJson)
+            }
+        )
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -76,17 +95,28 @@ class BridgeForegroundService : Service() {
             }
             ACTION_REFRESH_FGS_TYPES -> {
                 val includeMic = intent.getBooleanExtra(EXTRA_INCLUDE_MIC_TYPE, false)
+                val includeDataSync = intent.getBooleanExtra(EXTRA_INCLUDE_DATA_SYNC_TYPE, false)
                 if (isStarted) {
-                    promoteForegroundWithEligibleTypes(includeMicrophone = includeMic)
+                    promoteForegroundWithEligibleTypes(
+                        includeMicrophone = includeMic,
+                        includeDataSync = includeDataSync
+                    )
                 }
                 return START_STICKY
             }
             else -> {
                 val includeMic = intent?.getBooleanExtra(EXTRA_INCLUDE_MIC_TYPE, false) ?: false
+                val includeDataSync = intent?.getBooleanExtra(EXTRA_INCLUDE_DATA_SYNC_TYPE, false) ?: true
                 if (!isStarted) {
-                    startBridgeInternal(includeMicrophone = includeMic)
+                    startBridgeInternal(
+                        includeMicrophone = includeMic,
+                        includeDataSync = includeDataSync
+                    )
                 } else {
-                    promoteForegroundWithEligibleTypes(includeMicrophone = includeMic)
+                    promoteForegroundWithEligibleTypes(
+                        includeMicrophone = includeMic,
+                        includeDataSync = includeDataSync
+                    )
                 }
                 return START_STICKY
             }
@@ -98,11 +128,14 @@ class BridgeForegroundService : Service() {
         super.onDestroy()
     }
 
-    private fun startBridgeInternal(includeMicrophone: Boolean) {
+    private fun startBridgeInternal(includeMicrophone: Boolean, includeDataSync: Boolean) {
         _serviceState.value = BridgeServiceState.STARTING
         _lastError.value = null
 
-        val promoted = promoteForegroundWithEligibleTypes(includeMicrophone = includeMicrophone)
+        val promoted = promoteForegroundWithEligibleTypes(
+            includeMicrophone = includeMicrophone,
+            includeDataSync = includeDataSync
+        )
         if (!promoted) {
             _serviceState.value = BridgeServiceState.ERROR
             stopSelf()
@@ -116,12 +149,27 @@ class BridgeForegroundService : Service() {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         serviceScope = scope
 
+        container.bleSignalingServer.setLocalEndpointProvider {
+            val net = container.localNetworkManager.status.value
+            net.localIp to net.wssPort
+        }
         container.bleSignalingServer.setCommandHandler(::handleBridgeCommand)
         container.localNetworkManager.setCommandHandler(::handleBridgeCommand)
 
+        container.simManager.refresh()
         container.callManager.startMonitoring()
         container.bleSignalingServer.start()
         container.localNetworkManager.start()
+        container.contactsRepository.startObserving {
+            val event = JSONObject().apply {
+                put("version", AppConfig.PROTOCOL_VERSION)
+                put("type", "EVENT")
+                put("event", "CONTACTS_CHANGED")
+                put("timestamp", System.currentTimeMillis())
+            }.toString()
+            container.bleSignalingServer.publishRawEventJson(event)
+            container.localNetworkManager.sendRawFrame(event)
+        }
 
         val audioReport = container.localAudioBridge.refreshCapabilities()
         if (audioReport.cellularAudioCapability == AudioCapabilityState.CELLULAR_AUDIO_UNAVAILABLE) {
@@ -131,25 +179,30 @@ class BridgeForegroundService : Service() {
         observeBridgeState(scope)
     }
 
-    private fun promoteForegroundWithEligibleTypes(includeMicrophone: Boolean): Boolean {
+    private fun promoteForegroundWithEligibleTypes(
+        includeMicrophone: Boolean,
+        includeDataSync: Boolean
+    ): Boolean {
         val permSnapshot = container.permissionManager.refresh()
         val fgsMask = computeEligibleForegroundServiceTypes(
             canUseConnectedDevice = permSnapshot.canStartConnectedDeviceFgs(),
+            canUseDataSync = includeDataSync,
             canUseMicrophone = includeMicrophone && permSnapshot.canStartMicrophoneFgs(),
             canUsePhoneCall = permSnapshot.canStartPhoneCallFgs()
         )
 
         if (VersionUtils.isAtLeastUpsideDownCake() && fgsMask == 0) {
-            val msg = "Android 14+ requires Bluetooth permission (or Default Dialer role) before starting the Foreground Service."
+            val msg = "Android 14+ requires at least one eligible foreground service type before starting BridgeLink."
             _lastError.value = msg
             Logger.e("Service", msg)
             return false
         }
 
         val notification = notificationManager.buildNotification(
-            isIphoneConnected = container.bleSignalingServer.status.value.connectedDeviceAddress != null,
+            isIphoneConnected = isAnyIphoneConnected(),
             callInfo = container.callManager.callInfo.value,
-            audioCapability = container.localAudioBridge.capabilityReport.value.cellularAudioCapability
+            audioCapability = container.localAudioBridge.capabilityReport.value.cellularAudioCapability,
+            syncState = container.syncEngine.status.value.state
         )
 
         return try {
@@ -185,29 +238,58 @@ class BridgeForegroundService : Service() {
                 container.callManager.callInfo,
                 container.bleSignalingServer.status,
                 container.localNetworkManager.status,
-                container.localAudioBridge.capabilityReport
-            ) { callInfo, bleStatus, _, audioReport ->
-                Triple(callInfo, bleStatus.connectedDeviceAddress != null, audioReport.cellularAudioCapability)
-            }.collect { (callInfo, isConnected, cellularCap) ->
-                manageWakeLockForState(callInfo, isConnected)
-                notificationManager.updateNotification(isConnected, callInfo, cellularCap)
-                broadcastCurrentCallState(callInfo, cellularCap)
+                container.localAudioBridge.capabilityReport,
+                container.syncEngine.status
+            ) { callInfo, bleStatus, netStatus, audioReport, syncSnap ->
+                val connected = bleStatus.connectedDeviceAddress != null || netStatus.connectedClient != null
+                BridgeRuntimeObservation(
+                    callInfo = callInfo,
+                    isConnected = connected,
+                    cellularCap = audioReport.cellularAudioCapability,
+                    syncState = syncSnap.state
+                )
+            }.collect { obs ->
+                manageWakeLockForState(obs.callInfo, obs.isConnected, obs.syncState)
+                notificationManager.updateNotification(
+                    isIphoneConnected = obs.isConnected,
+                    callInfo = obs.callInfo,
+                    audioCapability = obs.cellularCap,
+                    syncState = obs.syncState
+                )
+                broadcastCurrentCallState(obs.callInfo, obs.cellularCap)
             }
         }
     }
 
-    private fun manageWakeLockForState(callInfo: CallInfo, isConnected: Boolean) {
-        val isCallActive = callInfo.state == CallState.RINGING || callInfo.state == CallState.OFFHOOK
-        if (isCallActive) {
+    private data class BridgeRuntimeObservation(
+        val callInfo: CallInfo,
+        val isConnected: Boolean,
+        val cellularCap: AudioCapabilityState,
+        val syncState: SyncRunState
+    )
+
+    private fun isAnyIphoneConnected(): Boolean {
+        return container.bleSignalingServer.status.value.connectedDeviceAddress != null ||
+            container.localNetworkManager.status.value.connectedClient != null
+    }
+
+    private fun manageWakeLockForState(callInfo: CallInfo, isConnected: Boolean, syncState: SyncRunState) {
+        if (callInfo.state.isOngoing()) {
             wakeLockManager.acquireFor("active_call", AppConfig.WAKELOCK_MAX_TIMEOUT_MS)
         } else {
             wakeLockManager.releaseFor("active_call")
         }
 
-        if (isConnected) {
-            wakeLockManager.acquireFor("ble_session", AppConfig.WAKELOCK_TEMP_OPERATION_MS)
+        if (syncState == SyncRunState.SYNCING) {
+            wakeLockManager.acquireFor("data_sync", AppConfig.WAKELOCK_TEMP_OPERATION_MS)
         } else {
-            wakeLockManager.releaseFor("ble_session")
+            wakeLockManager.releaseFor("data_sync")
+        }
+
+        if (isConnected) {
+            wakeLockManager.acquireFor("companion_session", AppConfig.WAKELOCK_TEMP_OPERATION_MS)
+        } else {
+            wakeLockManager.releaseFor("companion_session")
         }
     }
 
@@ -220,6 +302,8 @@ class BridgeForegroundService : Service() {
             number = callInfo.phoneNumber,
             displayName = callInfo.displayName,
             direction = callInfo.direction?.name,
+            subscriptionId = callInfo.subscriptionId,
+            startTime = callInfo.startTime,
             endpoint = container.localNetworkManager.currentEndpointPayload(),
             audioCapability = audioCap.name,
             callControlSupported = callControlSupported,
@@ -231,67 +315,13 @@ class BridgeForegroundService : Service() {
 
     private suspend fun handleBridgeCommand(command: CommandMessage, source: String): CommandResultMessage {
         wakeLockManager.acquireFor("cmd_${command.id}", AppConfig.WAKELOCK_TEMP_OPERATION_MS)
+        val bleAddress = if (source.startsWith("BLE:")) source.removePrefix("BLE:") else null
         return try {
-            when (command.cmd) {
-                ProtocolConstants.CMD_ACCEPT -> {
-                    val res = container.callManager.answerCall()
-                    CommandResultMessage(
-                        id = command.id,
-                        success = res.success,
-                        message = res.errorMessage,
-                        errorCode = res.errorCode,
-                        capabilityStatus = res.capabilityStatus.name
-                    )
-                }
-                ProtocolConstants.CMD_REJECT -> {
-                    val res = container.callManager.rejectCall()
-                    CommandResultMessage(
-                        id = command.id,
-                        success = res.success,
-                        message = res.errorMessage,
-                        errorCode = res.errorCode,
-                        capabilityStatus = res.capabilityStatus.name
-                    )
-                }
-                ProtocolConstants.CMD_HANGUP -> {
-                    val res = container.callManager.endCall()
-                    CommandResultMessage(
-                        id = command.id,
-                        success = res.success,
-                        message = res.errorMessage,
-                        errorCode = res.errorCode,
-                        capabilityStatus = res.capabilityStatus.name
-                    )
-                }
-                ProtocolConstants.CMD_DIAL -> {
-                    val res = container.callManager.dialNumber(command.number.orEmpty())
-                    CommandResultMessage(
-                        id = command.id,
-                        success = res.success,
-                        message = res.errorMessage,
-                        errorCode = res.errorCode,
-                        capabilityStatus = res.capabilityStatus.name
-                    )
-                }
-                ProtocolConstants.CMD_GET_STATUS -> {
-                    broadcastCurrentCallState(
-                        container.callManager.callInfo.value,
-                        container.localAudioBridge.capabilityReport.value.cellularAudioCapability
-                    )
-                    CommandResultMessage(
-                        id = command.id,
-                        success = true,
-                        message = "Status snapshot published",
-                        capabilityStatus = container.callManager.capability.value.name
-                    )
-                }
-                else -> CommandResultMessage(
-                    id = command.id,
-                    success = false,
-                    message = "Unhandled command ${command.cmd} from $source",
-                    errorCode = "UNHANDLED_COMMAND"
-                )
-            }
+            commandRouter.routeCommand(
+                command = command,
+                source = source,
+                bleAddressForSessionCheck = bleAddress
+            )
         } finally {
             wakeLockManager.releaseFor("cmd_${command.id}")
         }
@@ -309,6 +339,7 @@ class BridgeForegroundService : Service() {
         serviceScope?.cancel()
         serviceScope = null
 
+        container.contactsRepository.stopObserving()
         container.bleSignalingServer.stop()
         container.localNetworkManager.stop()
         container.callManager.stopMonitoring()
@@ -324,6 +355,7 @@ class BridgeForegroundService : Service() {
         const val ACTION_STOP = "com.example.callbridge.action.STOP"
         const val ACTION_REFRESH_FGS_TYPES = "com.example.callbridge.action.REFRESH_FGS_TYPES"
         const val EXTRA_INCLUDE_MIC_TYPE = "extra_include_mic_type"
+        const val EXTRA_INCLUDE_DATA_SYNC_TYPE = "extra_include_data_sync_type"
 
         private val _serviceState = MutableStateFlow(BridgeServiceState.STOPPED)
         val serviceState: StateFlow<BridgeServiceState> = _serviceState.asStateFlow()
@@ -331,10 +363,15 @@ class BridgeForegroundService : Service() {
         private val _lastError = MutableStateFlow<String?>(null)
         val lastError: StateFlow<String?> = _lastError.asStateFlow()
 
-        fun startService(context: Context, includeMicrophone: Boolean = false): Boolean {
+        fun startService(
+            context: Context,
+            includeMicrophone: Boolean = false,
+            includeDataSync: Boolean = true
+        ): Boolean {
             val intent = Intent(context, BridgeForegroundService::class.java).apply {
                 action = ACTION_START
                 putExtra(EXTRA_INCLUDE_MIC_TYPE, includeMicrophone)
+                putExtra(EXTRA_INCLUDE_DATA_SYNC_TYPE, includeDataSync)
             }
             return try {
                 ContextCompat.startForegroundService(context, intent)
@@ -361,28 +398,37 @@ class BridgeForegroundService : Service() {
                 .onFailure { runCatching { context.stopService(intent) } }
         }
 
-        fun updateForegroundTypes(context: Context, includeMicrophone: Boolean) {
+        fun updateForegroundTypes(
+            context: Context,
+            includeMicrophone: Boolean,
+            includeDataSync: Boolean = true
+        ) {
             if (_serviceState.value != BridgeServiceState.RUNNING) return
             val intent = Intent(context, BridgeForegroundService::class.java).apply {
                 action = ACTION_REFRESH_FGS_TYPES
                 putExtra(EXTRA_INCLUDE_MIC_TYPE, includeMicrophone)
+                putExtra(EXTRA_INCLUDE_DATA_SYNC_TYPE, includeDataSync)
             }
             runCatching { context.startService(intent) }
         }
 
         /**
          * Pure helper computing the exact Android 14+ foreground service type bitmask based on
-         * actually granted runtime permissions and platform roles.
+         * actually granted runtime permissions and active workloads.
          */
         fun computeEligibleForegroundServiceTypes(
             canUseConnectedDevice: Boolean,
-            canUseMicrophone: Boolean,
-            canUsePhoneCall: Boolean
+            canUseDataSync: Boolean = false,
+            canUseMicrophone: Boolean = false,
+            canUsePhoneCall: Boolean = false
         ): Int {
             if (!VersionUtils.isAtLeastQ()) return 0
             var mask = 0
             if (canUseConnectedDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 mask = mask or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+            }
+            if (canUseDataSync && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                mask = mask or ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             }
             if (canUseMicrophone && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 mask = mask or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE

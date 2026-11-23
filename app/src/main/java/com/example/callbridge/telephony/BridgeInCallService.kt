@@ -15,10 +15,9 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Official Android Telecom InCallService (API 23+).
  *
- * Active ONLY when the user grants CallBridge the default dialer role (ROLE_DIALER on Android 10+
- * or default dialer on Android 6–9). Safely tracks live android.telecom.Call objects, cleans up
- * callbacks immediately on removal so no stale references are retained, and exposes answer, reject,
- * and disconnect actions.
+ * Active ONLY when the user grants BridgeLink the default dialer role (ROLE_DIALER on Android 10+
+ * or default dialer on Android 6–9). Maps full 9-state Telecom call lifecycle and cleans up
+ * callbacks immediately on removal so no stale references are retained.
  */
 @TargetApi(Build.VERSION_CODES.M)
 class BridgeInCallService : InCallService() {
@@ -79,9 +78,17 @@ class BridgeInCallService : InCallService() {
  */
 object InCallServiceBridge {
 
+    private data class TrackedCallMeta(
+        val callId: String,
+        val startedAtMs: Long,
+        var lastNumber: String? = null,
+        var lastDisplayName: String? = null,
+        var lastDirection: CallDirection = CallDirection.UNKNOWN
+    )
+
     private val lock = Any()
     private var bound = false
-    private val trackedCalls = LinkedHashMap<Call, String>()
+    private val trackedCalls = LinkedHashMap<Call, TrackedCallMeta>()
 
     private val _isServiceBound = MutableStateFlow(false)
     val isServiceBound: StateFlow<Boolean> = _isServiceBound.asStateFlow()
@@ -103,29 +110,30 @@ object InCallServiceBridge {
 
     @TargetApi(Build.VERSION_CODES.M)
     fun onCallAdded(call: Call, callId: String) = synchronized(lock) {
-        trackedCalls[call] = callId
+        trackedCalls[call] = TrackedCallMeta(callId = callId, startedAtMs = System.currentTimeMillis())
         publishPrimaryCallLocked()
     }
 
     @TargetApi(Build.VERSION_CODES.M)
     fun onCallUpdated(call: Call, callId: String) = synchronized(lock) {
         if (!trackedCalls.containsKey(call)) {
-            trackedCalls[call] = callId
+            trackedCalls[call] = TrackedCallMeta(callId = callId, startedAtMs = System.currentTimeMillis())
         }
         publishPrimaryCallLocked()
     }
 
     @TargetApi(Build.VERSION_CODES.M)
     fun onCallRemoved(call: Call) = synchronized(lock) {
-        val removedId = trackedCalls.remove(call)
+        val removed = trackedCalls.remove(call)
         if (trackedCalls.isEmpty()) {
             _activeCallInfo.value = CallInfo(
-                callId = removedId,
-                phoneNumber = null,
-                displayName = null,
+                callId = removed?.callId,
+                phoneNumber = removed?.lastNumber,
+                displayName = removed?.lastDisplayName,
                 state = CallState.DISCONNECTED,
-                direction = null,
-                timestamp = System.currentTimeMillis()
+                direction = removed?.lastDirection,
+                timestamp = System.currentTimeMillis(),
+                startTime = removed?.startedAtMs
             )
         } else {
             publishPrimaryCallLocked()
@@ -181,21 +189,26 @@ object InCallServiceBridge {
             return
         }
         val call = entry.key
-        val callId = entry.value
+        val meta = entry.value
         val rawState = currentCallState(call)
         val mappedState = mapInCallState(rawState)
         val details = call.details
-        val number = details?.handle?.schemeSpecificPart?.takeIf { it.isNotBlank() }
-        val displayName = details?.callerDisplayName?.takeIf { it.isNotBlank() }
+        val number = details?.handle?.schemeSpecificPart?.takeIf { it.isNotBlank() } ?: meta.lastNumber
+        val displayName = details?.callerDisplayName?.takeIf { it.isNotBlank() } ?: meta.lastDisplayName
         val direction = resolveCallDirection(details, rawState)
+        meta.lastNumber = number
+        meta.lastDisplayName = displayName
+        if (direction != CallDirection.UNKNOWN) meta.lastDirection = direction
 
+        val connectTime = details?.connectTimeMillis?.takeIf { it > 0L } ?: meta.startedAtMs
         _activeCallInfo.value = CallInfo(
-            callId = callId,
+            callId = meta.callId,
             phoneNumber = number,
             displayName = displayName,
             state = mappedState,
-            direction = direction,
-            timestamp = System.currentTimeMillis()
+            direction = meta.lastDirection,
+            timestamp = System.currentTimeMillis(),
+            startTime = connectTime
         )
     }
 
@@ -226,13 +239,13 @@ object InCallServiceBridge {
     }
 
     @TargetApi(Build.VERSION_CODES.M)
-    private fun mapInCallState(telecomState: Int): CallState = when (telecomState) {
+    fun mapInCallState(telecomState: Int): CallState = when (telecomState) {
         Call.STATE_RINGING -> CallState.RINGING
-        Call.STATE_DIALING,
-        Call.STATE_CONNECTING,
-        Call.STATE_ACTIVE,
-        Call.STATE_HOLDING -> CallState.OFFHOOK
-        Call.STATE_DISCONNECTING,
+        Call.STATE_DIALING -> CallState.DIALING
+        Call.STATE_CONNECTING -> CallState.CONNECTING
+        Call.STATE_ACTIVE -> CallState.ACTIVE
+        Call.STATE_HOLDING -> CallState.HOLDING
+        Call.STATE_DISCONNECTING -> CallState.DISCONNECTING
         Call.STATE_DISCONNECTED -> CallState.DISCONNECTED
         else -> CallState.UNKNOWN
     }

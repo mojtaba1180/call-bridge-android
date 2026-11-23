@@ -12,6 +12,8 @@ import com.example.callbridge.protocol.CallStateMessage
 import com.example.callbridge.protocol.CommandMessage
 import com.example.callbridge.protocol.CommandResultMessage
 import com.example.callbridge.protocol.EndpointPayload
+import com.example.callbridge.security.KeyStoreManager
+import com.example.callbridge.security.PairingManager
 import com.example.callbridge.security.SessionAuthenticator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,20 +28,24 @@ import kotlinx.coroutines.launch
 
 /**
  * Monitors local Wi-Fi / Hotspot connectivity changes, resolves dynamic local IPv4 addresses,
- * manages [LocalControlServer] lifecycle with exponential backoff on socket failure, and
- * publishes current [EndpointPayload] updates for BLE signaling.
+ * runs the local TLS WebSocket server (`wss://<IP>:8443/bridge/v1`), advertises `_bridgelink._tcp.`
+ * over Android NSD, and exposes [EndpointPayload] updates for BLE signaling and QR pairing.
  */
 class LocalNetworkManager(
     context: Context,
+    private val keyStoreManager: KeyStoreManager,
+    private val pairingManager: PairingManager,
     sessionAuthenticator: SessionAuthenticator,
-    val controlPort: Int = AppConfig.DEFAULT_CONTROL_PORT,
+    val wssPort: Int = AppConfig.DEFAULT_WSS_PORT,
+    val wssPath: String = AppConfig.DEFAULT_WSS_PATH,
     val devAudioUdpPort: Int = AppConfig.DEFAULT_DEV_AUDIO_UDP_PORT
 ) {
     private val appContext = context.applicationContext
     private val connectivityManager =
         appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
     private val ipResolver = LocalIpResolver(appContext)
-    private val controlServer = LocalControlServer(sessionAuthenticator, controlPort)
+    private val webSocketServer = WebSocketServer(keyStoreManager, sessionAuthenticator, wssPort, wssPath)
+    private val discoveryManager = NetworkDiscoveryManager(appContext)
 
     private var scope: CoroutineScope? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
@@ -52,7 +58,7 @@ class LocalNetworkManager(
     val status: StateFlow<NetworkStatusSnapshot> = _status.asStateFlow()
 
     fun setCommandHandler(handler: suspend (CommandMessage, String) -> CommandResultMessage) {
-        controlServer.setCommandHandler(handler)
+        webSocketServer.setCommandHandler(handler)
     }
 
     fun start() {
@@ -65,14 +71,22 @@ class LocalNetworkManager(
         scope = managerScope
 
         managerScope.launch {
-            controlServer.serverState.collect { refreshSnapshotOnly() }
+            webSocketServer.serverState.collect { refreshSnapshotOnly() }
         }
         managerScope.launch {
-            controlServer.connectedClient.collect { refreshSnapshotOnly() }
+            webSocketServer.connectedClient.collect { refreshSnapshotOnly() }
+        }
+        managerScope.launch {
+            discoveryManager.isRegistered.collect { refreshSnapshotOnly() }
         }
 
         registerConnectivityMonitor()
         refreshNetworkAndRebind()
+    }
+
+    fun disconnectClients() {
+        webSocketServer.disconnectActiveClient()
+        refreshSnapshotOnly()
     }
 
     fun stop() {
@@ -80,7 +94,8 @@ class LocalNetworkManager(
         restartJob?.cancel()
         restartJob = null
         unregisterConnectivityMonitor()
-        controlServer.stop()
+        discoveryManager.unregisterService()
+        webSocketServer.stop()
         currentBoundIp = null
         scope?.cancel()
         scope = null
@@ -91,13 +106,20 @@ class LocalNetworkManager(
         val ip = _status.value.localIp ?: return null
         return EndpointPayload(
             host = ip,
-            port = controlPort,
+            port = wssPort,
+            path = wssPath,
+            scheme = "wss",
+            certSha256 = runCatching { keyStoreManager.getServerCertificateFingerprint() }.getOrNull(),
             devAudioUdpPort = devAudioUdpPort
         )
     }
 
     fun publishCallState(message: CallStateMessage) {
-        controlServer.sendCallState(message)
+        webSocketServer.sendCallState(message)
+    }
+
+    fun sendRawFrame(json: String): Boolean {
+        return webSocketServer.sendRawTextFrame(json)
     }
 
     fun refreshNetworkAndRebind() {
@@ -108,21 +130,25 @@ class LocalNetworkManager(
 
         val resolvedIp = resolved?.hostIp
         if (resolvedIp == null) {
-            if (controlServer.serverState.value == ServerRunState.LISTENING) {
-                Logger.w("Network", "Local network lost; pausing local control server")
-                controlServer.stop()
+            if (webSocketServer.serverState.value == ServerRunState.LISTENING) {
+                Logger.w("Network", "Local network lost; pausing TLS WebSocket server & NSD")
+                discoveryManager.unregisterService()
+                webSocketServer.stop()
                 currentBoundIp = null
             }
             refreshSnapshotOnly()
             return
         }
 
-        if (resolvedIp != currentBoundIp || controlServer.serverState.value != ServerRunState.LISTENING) {
-            controlServer.stop()
-            val ok = controlServer.start(resolvedIp)
+        if (resolvedIp != currentBoundIp || webSocketServer.serverState.value != ServerRunState.LISTENING) {
+            discoveryManager.unregisterService()
+            webSocketServer.stop()
+            val ok = webSocketServer.start(resolvedIp)
             if (ok) {
                 currentBoundIp = resolvedIp
                 backoffMs = AppConfig.INITIAL_BACKOFF_MS
+                val fp = runCatching { keyStoreManager.getServerCertificateFingerprint() }.getOrNull()
+                discoveryManager.registerService(wssPort, pairingManager.localDeviceId, fp)
             } else {
                 scheduleRestartWithBackoff()
             }
@@ -131,7 +157,7 @@ class LocalNetworkManager(
     }
 
     /**
-     * Executes a live local IP discovery and TCP control server loopback PING test.
+     * Executes a live local IP discovery + TLS WebSocket certificate-pinned loopback PING test.
      */
     suspend fun runSelfTest(): String {
         val resolved = ipResolver.resolveActiveLocalAddress()
@@ -142,23 +168,23 @@ class LocalNetworkManager(
             return msg
         }
 
-        val wasListening = controlServer.serverState.value == ServerRunState.LISTENING
+        val wasListening = webSocketServer.serverState.value == ServerRunState.LISTENING
         if (!wasListening) {
-            controlServer.start(resolved.hostIp)
+            webSocketServer.start(resolved.hostIp)
             currentBoundIp = resolved.hostIp
         }
 
-        val probeOk = controlServer.runLoopbackProbe(resolved.hostIp)
+        val probeOk = webSocketServer.runLoopbackProbe(resolved.hostIp)
         if (!wasListening && !isStarted) {
-            controlServer.stop()
+            webSocketServer.stop()
             currentBoundIp = null
         }
         refreshSnapshotOnly()
 
         val result = if (probeOk) {
-            "OK (${resolved.transportType.name} ${resolved.hostIp}:$controlPort PING verified)"
+            "OK (TLS wss://${resolved.hostIp}:$wssPort$wssPath pinned PING verified)"
         } else {
-            "Bound ${resolved.hostIp}:$controlPort (${resolved.interfaceName}), loopback probe failed"
+            "Bound wss://${resolved.hostIp}:$wssPort (${resolved.interfaceName}), TLS probe failed"
         }
         Logger.i("Network", "Network self-test: $result")
         return result
@@ -170,7 +196,7 @@ class LocalNetworkManager(
         val delayMs = backoffMs
         backoffMs = (backoffMs * 2).coerceAtMost(AppConfig.MAX_BACKOFF_MS)
         restartJob = managerScope.launch {
-            Logger.i("Network", "Retrying local server bind in ${delayMs}ms")
+            Logger.i("Network", "Retrying TLS WebSocket server bind in ${delayMs}ms")
             delay(delayMs)
             if (isStarted) refreshNetworkAndRebind()
         }
@@ -218,15 +244,19 @@ class LocalNetworkManager(
     }
 
     private fun buildSnapshot(resolved: ResolvedLocalAddress?): NetworkStatusSnapshot {
+        val fp = runCatching { keyStoreManager.getServerCertificateFingerprint() }.getOrNull()
         return NetworkStatusSnapshot(
             transportType = resolved?.transportType ?: NetworkTransportType.NONE,
             interfaceName = resolved?.interfaceName,
             localIp = resolved?.hostIp,
-            controlPort = controlPort,
+            wssPort = wssPort,
+            wssPath = wssPath,
             devAudioUdpPort = devAudioUdpPort,
-            serverState = controlServer.serverState.value,
-            connectedClient = controlServer.connectedClient.value,
-            lastError = controlServer.lastError.value
+            certSha256Fingerprint = fp,
+            nsdRegistered = discoveryManager.isRegistered.value,
+            serverState = webSocketServer.serverState.value,
+            connectedClient = webSocketServer.connectedClient.value,
+            lastError = webSocketServer.lastError.value
         )
     }
 }

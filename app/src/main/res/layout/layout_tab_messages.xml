@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.CallBridge.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    style="@style/Widget.CallBridge.SectionTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_sms_mode" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@color/status_ok_bg"
+                    android:padding="10dp"
+                    android:text="@string/sms_creator_notice"
+                    android:textColor="@color/status_ok"
+                    android:textSize="12sp" />
+
+                <TextView
+                    style="@style/Widget.CallBridge.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/label_sms_mode" />
+                <TextView
+                    android:id="@+id/tvSmsModeValue"
+                    style="@style/Widget.CallBridge.Value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="CREATOR_COMPLIANT_HANDOFF" />
+
+                <TextView
+                    style="@style/Widget.CallBridge.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/label_default_sms_role" />
+                <TextView
+                    android:id="@+id/tvDefaultSmsRole"
+                    style="@style/Widget.CallBridge.Value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/status_inactive" />
+
+                <TextView
+                    style="@style/Widget.CallBridge.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/label_selected_sim" />
+                <TextView
+                    android:id="@+id/tvSelectedSim"
+                    style="@style/Widget.CallBridge.Value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="—" />
+
+                <TextView
+                    style="@style/Widget.CallBridge.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/label_outbox_count" />
+                <TextView
+                    android:id="@+id/tvSmsOutboxSummary"
+                    style="@style/Widget.CallBridge.Value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="0" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnComposeSmsHandoff"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:text="@string/action_compose_sms"
+                        app:cornerRadius="12dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSelectSim"
+                        style="@style/Widget.CallBridge.ActionButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="6dp"
+                        android:text="@string/action_select_sim" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

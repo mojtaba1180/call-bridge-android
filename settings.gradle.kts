@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "CallBridge"
+rootProject.name = "BridgeLink"
 
 include(":app")

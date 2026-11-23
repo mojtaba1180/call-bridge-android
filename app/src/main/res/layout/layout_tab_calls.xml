@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Telecom Call Control Card -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.CallBridge.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    style="@style/Widget.CallBridge.SectionTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_calls_control" />
+
+                <TextView
+                    style="@style/Widget.CallBridge.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/label_call_state" />
+                <TextView
+                    android:id="@+id/tvCallState"
+                    style="@style/Widget.CallBridge.Value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="IDLE" />
+
+                <TextView
+                    style="@style/Widget.CallBridge.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/label_caller" />
+                <TextView
+                    android:id="@+id/tvCallerInfo"
+                    style="@style/Widget.CallBridge.Value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="—" />
+
+                <TextView
+                    style="@style/Widget.CallBridge.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/label_call_control_cap" />
+                <TextView
+                    android:id="@+id/tvCallCapability"
+                    style="@style/Widget.CallBridge.Value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="MONITOR_ONLY" />
+
+                <TextView
+                    style="@style/Widget.CallBridge.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/label_observed_calls" />
+                <TextView
+                    android:id="@+id/tvObservedCallsCount"
+                    style="@style/Widget.CallBridge.Value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="0" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@color/status_ok_bg"
+                    android:padding="10dp"
+                    android:text="@string/calllog_creator_notice"
+                    android:textColor="@color/status_ok"
+                    android:textSize="12sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnAnswerCall"
+                        style="@style/Widget.CallBridge.ActionButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:text="@string/action_answer" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRejectCall"
+                        style="@style/Widget.CallBridge.ActionButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_marginHorizontal="4dp"
+                        android:layout_weight="1"
+                        android:text="@string/action_reject" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnHangupCall"
+                        style="@style/Widget.CallBridge.ActionButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:text="@string/action_hangup" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDialNumber"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:text="@string/action_dial"
+                        app:cornerRadius="12dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSetDefaultDialer"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:text="@string/action_set_default_dialer"
+                        app:cornerRadius="12dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Isolated Audio & Cellular Audio Honesty Card -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.CallBridge.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    style="@style/Widget.CallBridge.SectionTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/section_audio_isolation" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@color/status_warn_bg"
+                    android:padding="10dp"
+                    android:text="@string/audio_limitation_notice"
+                    android:textColor="@color/status_warn"
+                    android:textSize="12sp" />
+
+                <TextView
+                    style="@style/Widget.CallBridge.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/label_cellular_audio_cap" />
+                <TextView
+                    android:id="@+id/tvCellularAudioCap"
+                    style="@style/Widget.CallBridge.Value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="CELLULAR_AUDIO_UNAVAILABLE" />
+
+                <TextView
+                    style="@style/Widget.CallBridge.Label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/label_mic_rms" />
+                <TextView
+                    android:id="@+id/tvMicRmsLevel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/jetbrains_mono"
+                    android:text="0"
+                    android:textColor="@color/brand_text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartMicTest"
+                        style="@style/Widget.CallBridge.ActionButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:text="@string/action_start_mic_test" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStopMicTest"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:text="@string/action_stop_mic_test"
+                        app:cornerRadius="12dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

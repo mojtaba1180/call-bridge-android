@@ -9,20 +9,19 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+import kotlin.math.abs
 
 data class AuthenticatedSession(
     val sessionToken: String,
     val deviceId: String,
     val bleAddress: String?,
-    val establishedAtMs: Long
+    val establishedAtMs: Long,
+    val expiresAtMs: Long
 )
 
 /**
- * Manages per-connection session tokens and authentication checks for both BLE GATT commands
- * and the local TCP control server.
- *
- * Uses standard JCA primitives (SecureRandom, MessageDigest.isEqual, HmacSHA256) with brute-force
- * cooldown protection. Never invents custom cryptographic algorithms.
+ * Manages authenticated companion sessions with session expiration, timestamp replay protection,
+ * request idempotency tracking, constant-time token comparison, and brute-force cooldowns.
  */
 class SessionAuthenticator(
     private val pairingManager: PairingManager
@@ -33,6 +32,7 @@ class SessionAuthenticator(
     private val _activeSession = MutableStateFlow<AuthenticatedSession?>(null)
     val activeSession: StateFlow<AuthenticatedSession?> = _activeSession.asStateFlow()
 
+    private val processedIdempotencyKeys = LinkedHashSet<String>()
     private var failedAttempts = 0
     private var cooldownUntilMs = 0L
 
@@ -40,16 +40,13 @@ class SessionAuthenticator(
         nowMs < cooldownUntilMs
     }
 
-    /**
-     * Authenticates a previously paired device and issues a fresh session token.
-     */
     fun authenticatePairedDevice(
         deviceId: String?,
         bleAddress: String?,
         nowMs: Long = System.currentTimeMillis()
     ): AuthenticatedSession? = synchronized(lock) {
         if (nowMs < cooldownUntilMs) {
-            Logger.w("Security", "Authentication blocked during cooldown window")
+            Logger.w("Security", "Authentication blocked during brute-force cooldown")
             return null
         }
 
@@ -68,19 +65,25 @@ class SessionAuthenticator(
             sessionToken = token,
             deviceId = deviceId!!,
             bleAddress = bleAddress,
-            establishedAtMs = nowMs
+            establishedAtMs = nowMs,
+            expiresAtMs = nowMs + AppConfig.SESSION_TTL_MS
         )
         _activeSession.value = session
-        Logger.i("Security", "iPhone session authenticated")
+        Logger.i("Security", "Companion session authenticated (expires in 12h)")
         session
     }
 
-    /**
-     * Verifies whether a sensitive command is authorized via active session token
-     * (and optionally bound BLE address).
-     */
-    fun isAuthorized(sessionToken: String?, bleAddress: String? = null): Boolean = synchronized(lock) {
+    fun isAuthorized(
+        sessionToken: String?,
+        bleAddress: String? = null,
+        nowMs: Long = System.currentTimeMillis()
+    ): Boolean = synchronized(lock) {
         val current = _activeSession.value ?: return false
+        if (nowMs > current.expiresAtMs) {
+            _activeSession.value = null
+            Logger.w("Security", "Active session expired; re-authentication required")
+            return false
+        }
         if (sessionToken.isNullOrBlank()) return false
         val tokenValid = MessageDigest.isEqual(
             current.sessionToken.toByteArray(Charsets.UTF_8),
@@ -94,8 +97,30 @@ class SessionAuthenticator(
     }
 
     /**
-     * Computes standard HMAC-SHA256 digest for message integrity verification when a shared key is provisioned.
+     * Checks whether a command timestamp lies within the allowed replay protection window.
+     * Returns true when timestamp is null (legacy clients) or within +/- 120 seconds.
      */
+    fun isTimestampFresh(commandTimestampMs: Long?, nowMs: Long = System.currentTimeMillis()): Boolean {
+        if (commandTimestampMs == null) return true
+        return abs(nowMs - commandTimestampMs) <= AppConfig.REPLAY_TIMESTAMP_WINDOW_MS
+    }
+
+    /**
+     * Records an idempotency key; returns false if this key was already executed recently (replay/duplicate).
+     */
+    fun claimIdempotencyKey(idempotencyKey: String?): Boolean = synchronized(lock) {
+        if (idempotencyKey.isNullOrBlank()) return true
+        if (processedIdempotencyKeys.contains(idempotencyKey)) {
+            return false
+        }
+        if (processedIdempotencyKeys.size >= MAX_TRACKED_KEYS) {
+            val first = processedIdempotencyKeys.firstOrNull()
+            if (first != null) processedIdempotencyKeys.remove(first)
+        }
+        processedIdempotencyKeys.add(idempotencyKey)
+        true
+    }
+
     fun computeHmacSha256(key: String, payload: String): String {
         val mac = Mac.getInstance("HmacSHA256")
         val keySpec = SecretKeySpec(key.toByteArray(Charsets.UTF_8), "HmacSHA256")
@@ -117,5 +142,9 @@ class SessionAuthenticator(
             failedAttempts = 0
             Logger.w("Security", "Too many failed auth attempts; cooldown activated")
         }
+    }
+
+    companion object {
+        private const val MAX_TRACKED_KEYS = 256
     }
 }

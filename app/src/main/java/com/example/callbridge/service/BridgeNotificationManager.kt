@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import com.example.R
 import com.example.callbridge.audio.AudioCapabilityState
 import com.example.callbridge.core.Logger
+import com.example.callbridge.sync.SyncRunState
 import com.example.callbridge.telephony.CallInfo
 import com.example.callbridge.telephony.CallState
 import com.example.callbridge.ui.MainActivity
@@ -18,7 +19,7 @@ import com.example.callbridge.utils.VersionUtils
 
 /**
  * Creates API 26+ notification channels (with API 21–25 fallback) and builds dynamic
- * persistent foreground service notifications reflecting BLE, telephony, and audio capability state.
+ * persistent BridgeLink foreground service notifications reflecting BLE, Sync, Telephony, and Audio state.
  */
 class BridgeNotificationManager(context: Context) {
 
@@ -43,21 +44,23 @@ class BridgeNotificationManager(context: Context) {
     fun buildNotification(
         isIphoneConnected: Boolean,
         callInfo: CallInfo,
-        audioCapability: AudioCapabilityState
+        audioCapability: AudioCapabilityState,
+        syncState: SyncRunState = SyncRunState.IDLE
     ): Notification {
         ensureChannelCreated()
 
-        val title = when (callInfo.state) {
-            CallState.RINGING -> {
+        val title = when {
+            callInfo.state == CallState.RINGING -> {
                 val displayCaller = Logger.maskPhoneNumber(callInfo.phoneNumber)
                 appContext.getString(R.string.notif_incoming_call, displayCaller)
             }
-            CallState.OFFHOOK -> appContext.getString(R.string.notif_active_call)
-            else -> if (isIphoneConnected) {
-                appContext.getString(R.string.notif_connected)
-            } else {
-                appContext.getString(R.string.notif_waiting)
-            }
+            callInfo.state == CallState.ACTIVE ||
+                callInfo.state == CallState.DIALING ||
+                callInfo.state == CallState.CONNECTING ||
+                callInfo.state == CallState.HOLDING -> appContext.getString(R.string.notif_active_call)
+            syncState == SyncRunState.SYNCING -> appContext.getString(R.string.notif_syncing)
+            isIphoneConnected -> appContext.getString(R.string.notif_connected)
+            else -> appContext.getString(R.string.notif_waiting)
         }
 
         val subText = if (audioCapability == AudioCapabilityState.CELLULAR_AUDIO_UNAVAILABLE) {
@@ -101,9 +104,10 @@ class BridgeNotificationManager(context: Context) {
     fun updateNotification(
         isIphoneConnected: Boolean,
         callInfo: CallInfo,
-        audioCapability: AudioCapabilityState
+        audioCapability: AudioCapabilityState,
+        syncState: SyncRunState = SyncRunState.IDLE
     ) {
-        val notification = buildNotification(isIphoneConnected, callInfo, audioCapability)
+        val notification = buildNotification(isIphoneConnected, callInfo, audioCapability, syncState)
         runCatching {
             notificationManager.notify(NOTIFICATION_ID, notification)
         }.onFailure {
@@ -112,7 +116,7 @@ class BridgeNotificationManager(context: Context) {
     }
 
     companion object {
-        const val CHANNEL_ID = "callbridge_foreground_channel"
+        const val CHANNEL_ID = "bridgelink_foreground_channel"
         const val NOTIFICATION_ID = 4101
     }
 }

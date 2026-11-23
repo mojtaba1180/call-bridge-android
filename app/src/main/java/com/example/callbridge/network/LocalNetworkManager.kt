@@ -44,7 +44,7 @@ class LocalNetworkManager(
     private val connectivityManager =
         appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
     private val ipResolver = LocalIpResolver(appContext)
-    private val webSocketServer = WebSocketServer(keyStoreManager, sessionAuthenticator, wssPort, wssPath)
+    private val webSocketServer = WebSocketServer(keyStoreManager, sessionAuthenticator, wssPort, wssPath, pairingManager)
     private val discoveryManager = NetworkDiscoveryManager(appContext)
 
     private var scope: CoroutineScope? = null

@@ -11,6 +11,7 @@ import com.example.callbridge.protocol.MessageSerializer
 import com.example.callbridge.protocol.ProtocolConstants
 import com.example.callbridge.security.CertificatePinningManager
 import com.example.callbridge.security.KeyStoreManager
+import com.example.callbridge.security.PairingManager
 import com.example.callbridge.security.SessionAuthenticator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,7 +50,8 @@ class WebSocketServer(
     private val keyStoreManager: KeyStoreManager,
     private val sessionAuthenticator: SessionAuthenticator,
     private val port: Int = AppConfig.DEFAULT_WSS_PORT,
-    private val expectedPath: String = AppConfig.DEFAULT_WSS_PATH
+    private val expectedPath: String = AppConfig.DEFAULT_WSS_PATH,
+    private val pairingManager: PairingManager? = null
 ) {
     private val running = AtomicBoolean(false)
     private var scope: CoroutineScope? = null
@@ -329,6 +331,63 @@ class WebSocketServer(
                         success = true,
                         message = "PONG"
                     )
+                    ProtocolConstants.CMD_PAIR_REQUEST -> {
+                        val pm = pairingManager
+                        val deviceId = cmd.deviceId
+                        if (pm == null || deviceId.isNullOrBlank()) {
+                            CommandResultMessage(
+                                id = cmd.id,
+                                success = false,
+                                message = "Missing deviceId or pairingManager",
+                                errorCode = "MISSING_DEVICE_ID"
+                            )
+                        } else {
+                            val req = pm.registerIncomingPairRequest(
+                                deviceId = deviceId,
+                                deviceName = cmd.deviceName,
+                                bleAddress = null,
+                                suppliedToken = cmd.pairingToken
+                            )
+                            if (req == null) {
+                                CommandResultMessage(
+                                    id = cmd.id,
+                                    success = false,
+                                    message = "Pairing QR token invalid or expired",
+                                    errorCode = "INVALID_PAIRING_TOKEN"
+                                )
+                            } else {
+                                CommandResultMessage(
+                                    id = cmd.id,
+                                    success = true,
+                                    message = "Pairing request pending explicit Android user approval",
+                                    capabilityStatus = "AWAITING_USER_APPROVAL:${req.deviceId}"
+                                )
+                            }
+                        }
+                    }
+                    ProtocolConstants.CMD_PAIR_VERIFY -> {
+                        val pm = pairingManager
+                        val ok = pm?.verifyPinForPairing(
+                            deviceId = cmd.deviceId.orEmpty(),
+                            deviceName = cmd.deviceName,
+                            bleAddress = null,
+                            suppliedPin = cmd.pinCode.orEmpty()
+                        ) == true
+                        if (ok) {
+                            CommandResultMessage(
+                                id = cmd.id,
+                                success = true,
+                                message = "PIN verified; awaiting explicit user confirmation on Android"
+                            )
+                        } else {
+                            CommandResultMessage(
+                                id = cmd.id,
+                                success = false,
+                                message = "Invalid or expired pairing PIN",
+                                errorCode = "PAIRING_PIN_INVALID"
+                            )
+                        }
+                    }
                     ProtocolConstants.CMD_AUTH -> {
                         val session = sessionAuthenticator.authenticatePairedDevice(cmd.deviceId, null)
                         if (session != null) {
